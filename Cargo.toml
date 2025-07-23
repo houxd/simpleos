@@ -1,0 +1,27 @@
+[package]
+name = "masy"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["lib"]
+
+[features]
+default = []
+### 使用内置的内存分配器, 调用C语言的malloc等函数
+allocator = []
+### 内置panic处理器为死循环
+panic-handler = []
+
+[dependencies]
+core = { version = "1.0.0", optional = true, package = "rustc-std-workspace-core" }
+compiler_builtins = { version = "0.1.0", optional = true }
+buddy-alloc = "0.6.0"
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+opt-level = "s"
+lto = true
