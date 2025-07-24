@@ -1,20 +1,56 @@
-use buddy_alloc::{BuddyAllocParam, FastAllocParam, NonThreadsafeAlloc};
-use core::ptr::addr_of_mut;
+use core::alloc::{GlobalAlloc, Layout};
+use core::ffi::c_void;
 
-const FAST_HEAP_SIZE: usize = 32 * 1024; // 32 KB
-const HEAP_SIZE: usize = 1024 * 1024; // 1M
-const LEAF_SIZE: usize = 16;
+unsafe extern "C" {
+    fn malloc(size: usize) -> *mut c_void;
+    fn free(ptr: *mut c_void);
+    fn aligned_alloc(alignment: usize, size: usize) -> *mut c_void;
+}
 
-#[repr(align(64))]
-struct Heap<const S: usize>([u8; S]);
+pub struct CAllocator;
 
-static mut FAST_HEAP: Heap<FAST_HEAP_SIZE> = Heap([0u8; FAST_HEAP_SIZE]);
-static mut HEAP: Heap<HEAP_SIZE> = Heap([0u8; HEAP_SIZE]);
+impl CAllocator {
+    pub const fn new() -> Self {
+        CAllocator
+    }
+}
 
-#[cfg_attr(not(test), global_allocator)]
-#[allow(unused)]
-static ALLOC: NonThreadsafeAlloc = {
-    let fast_param = FastAllocParam::new(addr_of_mut!(FAST_HEAP).cast(), FAST_HEAP_SIZE);
-    let buddy_param = BuddyAllocParam::new(addr_of_mut!(HEAP).cast(), HEAP_SIZE, LEAF_SIZE);
-    NonThreadsafeAlloc::new(fast_param, buddy_param)
-};
+unsafe impl GlobalAlloc for CAllocator {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        if layout.align() <= 8 {
+            // 对于小对齐要求，直接使用 malloc
+            malloc(layout.size()) as *mut u8
+        } else {
+            // 对于较大的对齐要求，使用 aligned_alloc
+            aligned_alloc(layout.align(), layout.size()) as *mut u8
+        }
+
+        // todo!("CAllocator alloc not implemented");
+    }
+
+    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
+        free(ptr as *mut c_void);
+
+        // todo!("CAllocator dealloc not implemented");
+    }
+
+    // unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+    //     let ptr = self.alloc(layout);
+    //     if !ptr.is_null() {
+    //         core::ptr::write_bytes(ptr, 0, layout.size());
+    //     }
+    //     ptr
+    // }
+
+    // unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+    //     let new_ptr = self.alloc(Layout::from_size_align_unchecked(new_size, layout.align()));
+    //     if !new_ptr.is_null() && !ptr.is_null() {
+    //         core::ptr::copy_nonoverlapping(ptr, new_ptr, layout.size().min(new_size));
+    //         self.dealloc(ptr, layout);
+    //     }
+    //     new_ptr
+    // }
+}
+
+// #[global_allocator]
+// pub static ALLOCATOR: CAllocator = CAllocator::new();
