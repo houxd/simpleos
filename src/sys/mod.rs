@@ -9,8 +9,8 @@ mod yield_now;
 #[cfg(all(feature = "panic-handler", not(test)))]
 mod panic_handler;
 
-#[cfg(feature = "panic-handler")]
-pub use panic_handler::panic;
+// #[cfg(feature = "panic-handler")]
+// pub use panic_handler::panic;
 
 #[cfg(feature = "allocator")]
 pub mod allocator;
@@ -38,3 +38,6 @@ pub use cmd::*;
 
 #[allow(unused)]
 pub use select::*;
+
+pub use crate::print;
+pub use crate::println;

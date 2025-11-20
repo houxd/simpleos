@@ -8,4 +8,4 @@ pub use ringbuf::RingBuf;
 #[allow(unused)]
 pub use crc16::crc16;
 #[allow(unused)]
-pub use singleton::*;
+pub use crate::singleton;
