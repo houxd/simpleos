@@ -8,7 +8,7 @@ repository = "https://github.com/houxd/simpleos"
 homepage = "https://github.com/houxd/simpleos"
 documentation = "https://docs.rs/simpleos"
 keywords = ["embedded", "mcu", "no-std", "async", "console"]
-categories = ["no-std", "embedded::no-std"]
+categories = ["no-std"]
 authors = ["houxd.g@gmail.com"]
 exclude = []
 
