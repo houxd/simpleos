@@ -3,7 +3,7 @@
 
 extern crate alloc;
 use alloc::vec::Vec;
-use masy::CAllocator;
+use simpleos::CAllocator;
 
 #[global_allocator]
 pub static ALLOCATOR: CAllocator = CAllocator::new();

@@ -21,9 +21,9 @@ pub extern "C" fn get_tick_count() -> u32 {
 // 测试异步函数
 extern crate alloc;
 use alloc::boxed::Box;
-use masy::delay;
-use masy::Executor;
-use masy::yield_now;
+use simpleos::delay;
+use simpleos::Executor;
+use simpleos::yield_now;
 
 async fn task1() {
     loop {
