@@ -2,6 +2,9 @@
 name = "simpleos"
 version = "0.1.0"
 edition = "2021"
+description = "A Simple OS use for MCU, that implements single-threaded asynchronous runtime."
+license = "MIT"
+categories = ["no-std", "embedded::no-std"]
 
 [lib]
 crate-type = ["lib"]

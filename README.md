@@ -1,2 +1,2 @@
 
-A Simple OS use for MCU, implements single threaded async runtimes
+A Simple OS use for MCU, that implements single-threaded asynchronous runtime.
