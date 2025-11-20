@@ -1,13 +1,13 @@
 
+FEATURES_ARGS = \
+	--no-default-features \
+	--features="util"
 
-all: no_std_buddy_alloc task_emulate allocator_test
+all: 
+	cargo build --example emulate $(FEATURES_ARGS)
 
+emulate:
+	cargo run --example emulate $(FEATURES_ARGS)
 
-no_std_buddy_alloc:
-	cargo build --target thumbv7em-none-eabi --example no_std_buddy_alloc
-
-task_emulate:
-	cargo build --example task_emulate
-
-allocator_test:
-	cargo build --target thumbv7em-none-eabi --example allocator_test --features="allocator panic-handler"
+clean:
+	cargo clean

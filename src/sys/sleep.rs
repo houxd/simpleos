@@ -1,3 +1,4 @@
+// use crate::driver::stm32::Stm32;
 use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
@@ -6,11 +7,11 @@ unsafe extern "C" {
     fn get_tick_count() -> u32;
 }
 
-pub struct Delay {
+pub struct SleepFuture {
     escape: u32,
 }
 
-impl Future for Delay {
+impl Future for SleepFuture {
     type Output = ();
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -25,9 +26,9 @@ impl Future for Delay {
 }
 
 #[allow(unused)]
-pub fn delay(ticks: u32) -> Delay {
+pub fn sleep(ticks: u32) -> SleepFuture {
     unsafe {
-        Delay {
+        SleepFuture {
             escape: ticks + get_tick_count(),
         }
     }

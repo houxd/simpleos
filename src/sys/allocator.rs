@@ -19,19 +19,17 @@ unsafe impl GlobalAlloc for CAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         if layout.align() <= 8 {
             // 对于小对齐要求，直接使用 malloc
-            malloc(layout.size()) as *mut u8
+            unsafe { malloc(layout.size() as _) as *mut u8 }
         } else {
             // 对于较大的对齐要求，使用 aligned_alloc
-            aligned_alloc(layout.align(), layout.size()) as *mut u8
+            unsafe { aligned_alloc(layout.align() as _, layout.size() as _) as *mut u8 }
         }
-
-        // todo!("CAllocator alloc not implemented");
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
-        free(ptr as *mut c_void);
-
-        // todo!("CAllocator dealloc not implemented");
+        unsafe {
+            free(ptr as *mut ::core::ffi::c_void);
+        }
     }
 
     // unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
@@ -52,5 +50,5 @@ unsafe impl GlobalAlloc for CAllocator {
     // }
 }
 
-// #[global_allocator]
-// pub static ALLOCATOR: CAllocator = CAllocator::new();
+#[global_allocator]
+pub static ALLOCATOR: CAllocator = CAllocator::new();

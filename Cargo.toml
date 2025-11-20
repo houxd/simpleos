@@ -7,25 +7,24 @@ edition = "2021"
 crate-type = ["lib"]
 
 [features]
-default = []
-### 使用内置的内存分配器, 调用C语言的malloc等函数
-allocator = []
-### 内置panic处理器为死循环
-panic-handler = []
+default = ["util"] # 使用内置的内存分配器, 调用C语言的malloc等函数
+allocator = []     # 内置panic处理器为死循环
+panic-handler = [] # 使用内置的panic处理器, 需要启用core库
+util = []          # 启用实用工具功能, 例如时间处理等
 
 [[example]]
-name = "allocator_test"
-required-features = ["allocator", "panic-handler"]
+name = "emulate"
 
 [dependencies]
-core = { version = "1.0.0", optional = true, package = "rustc-std-workspace-core" }
-compiler_builtins = { version = "0.1.0", optional = true }
-buddy-alloc = "0.6.0"
+# buddy-alloc = "0.6.0"
+heapless = "0.9"
+anyhow = { version = "1.0", default-features = false }
+chrono = { version = "0.4", default-features = false, features = ["alloc"] }
 
 [profile.dev]
-panic = "abort"
+opt-level = 0
 
 [profile.release]
-panic = "abort"
 opt-level = "s"
+codegen-units = 1
 lto = true

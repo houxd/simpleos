@@ -2,11 +2,11 @@ use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
-pub struct YieldNow {
+pub struct YieldNowFuture {
     yielded: bool,
 }
 
-impl Future for YieldNow {
+impl Future for YieldNowFuture {
     type Output = ();
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
@@ -21,6 +21,6 @@ impl Future for YieldNow {
 }
 
 #[allow(unused)]
-pub fn yield_now() -> YieldNow {
-    YieldNow { yielded: false }
+pub fn yield_now() -> YieldNowFuture {
+    YieldNowFuture { yielded: false }
 }
