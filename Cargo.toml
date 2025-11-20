@@ -4,7 +4,13 @@ version = "0.1.0"
 edition = "2021"
 description = "A Simple OS use for MCU, that implements single-threaded asynchronous runtime."
 license = "MIT"
+repository = "https://github.com/houxd/simpleos-rs"
+homepage = "https://github.com/houxd/simpleos-rs"
+documentation = "https://docs.rs/simpleos-rs"
+keywords = ["embedded", "mcu", "no-std", "os", "async", "console"]
 categories = ["no-std", "embedded::no-std"]
+authors = ["houxd.g@gmail.com"]
+exclude = []
 
 [lib]
 crate-type = ["lib"]
@@ -19,9 +25,7 @@ util = []          # 启用实用工具功能, 例如时间处理等
 name = "emulate"
 
 [dependencies]
-# buddy-alloc = "0.6.0"
 heapless = "0.9"
-anyhow = { version = "1.0", default-features = false }
 chrono = { version = "0.4", default-features = false, features = ["alloc"] }
 
 [profile.dev]
