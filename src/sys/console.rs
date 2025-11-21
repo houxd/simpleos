@@ -1,7 +1,4 @@
-// use crate::driver::rtc_driver::RtcDriver;
-// use crate::driver::stm32::Stm32;
-// use crate::driver::stm32_rtc::Stm32Rtc as Rtc;
-use crate::sys::{sleep, yield_now, CmdParse, Executor};
+use crate::sys::{CmdParse, Executor, sleep, yield_now};
 use crate::{join, select, singleton};
 use alloc::boxed::Box;
 use alloc::rc::Rc;

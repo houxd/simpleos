@@ -1,0 +1,5 @@
+使用sfud v1.1.0
+- 调试输出开关: sfud_cfg.h: SFUD_DEBUG_MODE
+- 修改sfud_port.c 和 sfud_cfg.h 以适应stm32f407
+- 关于 W25Q64 出现: Write Enable Failed 问题, 屏蔽了 sfud.c 的 set_write_enabled 对始能位的检查
+- SFUD_FLASH_DEVICE_TABLE 修改这个宏增加更多的spiflash

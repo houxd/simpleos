@@ -1,6 +1,6 @@
 [package]
 name = "simpleos"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "A Simple OS use for MCU, that implements single-threaded asynchronous runtime."
 license = "MIT"
@@ -16,10 +16,10 @@ exclude = []
 crate-type = ["lib"]
 
 [features]
-default = ["util", "panic-handler", "allocator"] # 使用内置的内存分配器, 调用C语言的malloc等函数
-allocator = []     # 内置panic处理器为死循环
-panic-handler = [] # 使用内置的panic处理器, 需要启用core库
-util = []          # 启用实用工具功能, 例如时间处理等
+default = ["util", "panic-handler", "allocator-cstdlib"]
+allocator-cstdlib = []                           # 启用基于C标准库的内存分配器
+panic-handler = []                               # 使用内置的panic处理器, 需要启用core库
+util = []                                        # 启用实用工具功能, 例如时间处理等
 
 [[example]]
 name = "emulate"
@@ -27,6 +27,12 @@ name = "emulate"
 [dependencies]
 heapless = "0.9"
 chrono = { version = "0.4", default-features = false, features = ["alloc"] }
+anyhow = { version = "1.0", default-features = false }
+
+[build-dependencies]
+bindgen = "0.72"
+anyhow = "1.0"
+cc = "1.2"
 
 [profile.dev]
 opt-level = 0

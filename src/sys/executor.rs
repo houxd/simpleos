@@ -1,8 +1,3 @@
-use core::cell::RefCell;
-use core::future::Future;
-use core::pin::Pin;
-use core::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
-extern crate alloc;
 use crate::singleton;
 use crate::sys::yield_now;
 use alloc::boxed::Box;
@@ -10,17 +5,21 @@ use alloc::collections::VecDeque;
 use alloc::rc::Rc;
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::cell::RefCell;
+use core::future::Future;
 use core::option::Option;
+use core::pin::Pin;
+use core::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
 
-pub type BoxFuture = Pin<Box<dyn Future<Output = ()>>>;
+pub type PinBoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
 pub struct Task {
     id: u16,
     cmd: String,
-    future: BoxFuture,
+    future: PinBoxFuture<'static, ()>,
 }
 impl Task {
-    pub fn new(id: u16, cmd: String, future: BoxFuture) -> Self {
+    pub fn new(id: u16, cmd: String, future: PinBoxFuture<'static, ()>) -> Self {
         Task { id, cmd, future }
     }
 }

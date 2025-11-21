@@ -1,0 +1,589 @@
+use anyhow::Result;
+use std::fs;
+use std::path::Path;
+use std::process::Command;
+
+fn main() {
+    let bindings_path = "src/bindings/bindings.rs";
+
+    let compile_config = &CompileConfig::CortexM4_HardFloat_C("gnu11");
+    let mut bindings = Binding::new();
+
+    // let stdlib = Binding::new().add_system_header("stdlib.h").clone();
+
+    // let hal = Binding::from_makefile("../Makefile")
+    //     .expect("Failed to create Binding from Makefile")
+    //     .add_headers_from_dir("../Core/Inc")
+    //     .clone();
+
+    let sfud = Binding::new()
+        .add_include_dir("-Isrc/driver/fs/sfud")
+        // .add_include_dir_from_makefile("../Makefile", "C_INCLUDES")
+        .add_headers_from_dir("src/driver/fs/sfud")
+        .add_sources_from_dir("src/driver/fs/sfud")
+        //.dump()
+        .compile("sfud", compile_config)
+        .expect("Failed to compile SFUD C code")
+        .clone();
+    bindings = bindings.concat(sfud);
+
+    let littlefs = Binding::new()
+        .add_include_dir("-Isrc/driver/fs/littlefs")
+        // .add_include_dir_from_makefile("../Makefile", "C_INCLUDES")
+        .add_headers_from_dir("src/driver/fs/littlefs")
+        .add_sources_from_dir("src/driver/fs/littlefs")
+        //.dump()
+        .compile("littlefs", compile_config)
+        .expect("Failed to compile LittleFS C code")
+        .clone();
+    bindings = bindings.concat(littlefs);
+
+    bindings
+        // .dump()
+        .generate(bindings_path, compile_config)
+        .expect("Failed to generate bindings");
+}
+
+#[allow(unused)]
+#[allow(non_camel_case_types)]
+enum CompileConfig {
+    CortexM4_HardFloat_C(&'static str),
+    CortexM4_HardFloat_CPP(&'static str),
+    CortexM4_SoftFloat_C(&'static str),
+    CortexM4_SoftFloat_CPP(&'static str),
+}
+
+#[derive(Debug, Clone)]
+struct Binding {
+    defines: Vec<String>,      // 预处理定义 "-Dxxx"
+    include_dirs: Vec<String>, // 包含目录 "-Ixxx"
+    headers: Vec<String>,      // 头文件列表 "xxx.h"
+    sources: Vec<String>,      // 源文件列表 "xxx.c"
+}
+
+#[allow(unused)]
+impl Binding {
+    pub fn new() -> Self {
+        Binding {
+            defines: vec![],
+            include_dirs: vec![],
+            headers: vec![],
+            sources: vec![],
+        }
+    }
+
+    pub fn concat(&self, other: Binding) -> Binding {
+        let mut new_binding = Binding::new();
+        // 合并并且去除重复, 并保持插入顺序
+        new_binding.defines = {
+            let mut seen = std::collections::HashSet::new();
+            let mut result = Vec::new();
+            for define in self.defines.iter().chain(other.defines.iter()) {
+                if seen.insert(define) {
+                    result.push(define.clone());
+                }
+            }
+            result
+        };
+        new_binding.include_dirs = {
+            let mut seen = std::collections::HashSet::new();
+            let mut result = Vec::new();
+            for include_dir in self.include_dirs.iter().chain(other.include_dirs.iter()) {
+                if seen.insert(include_dir) {
+                    result.push(include_dir.clone());
+                }
+            }
+            result
+        };
+        new_binding.headers = {
+            let mut seen = std::collections::HashSet::new();
+            let mut result = Vec::new();
+            for header in self.headers.iter().chain(other.headers.iter()) {
+                if seen.insert(header) {
+                    result.push(header.clone());
+                }
+            }
+            result
+        };
+        new_binding.sources = {
+            let mut seen = std::collections::HashSet::new();
+            let mut result = Vec::new();
+            for source in self.sources.iter().chain(other.sources.iter()) {
+                if seen.insert(source) {
+                    result.push(source.clone());
+                }
+            }
+            result
+        };
+        new_binding
+    }
+
+    pub fn dump(&self) -> &Self {
+        println!("RUST_BACKTRACE=1Binding:");
+        println!("RUST_BACKTRACE=1  Defines:");
+        for define in &self.defines {
+            println!("RUST_BACKTRACE=1    {}", define);
+        }
+        println!("RUST_BACKTRACE=1  Include Dirs:");
+        for include_dir in &self.include_dirs {
+            println!("RUST_BACKTRACE=1    {}", include_dir);
+        }
+        println!("RUST_BACKTRACE=1  Headers:");
+        for header in &self.headers {
+            println!("RUST_BACKTRACE=1    {}", header);
+        }
+        self
+    }
+
+    pub fn from_makefile(makefile_path: &str) -> Result<Self> {
+        let top_dir = Path::new(makefile_path)
+            .parent()
+            .ok_or_else(|| anyhow::anyhow!("Failed to get parent directory of Makefile"))?;
+        let defines = Self::get_makefile_variable(makefile_path, "C_DEFS").map_err(|err| anyhow::anyhow!("Failed to get defines: {}", err))?;
+        let include_dirs =
+            Self::get_makefile_variable(makefile_path, "C_INCLUDES").map_err(|err| anyhow::anyhow!("Failed to get include dirs: {}", err))?;
+        let include_dirs = include_dirs
+            .iter()
+            .map(|dir| {
+                // 去除-I前缀, 增加绝对路径
+                let path = dir.trim_start_matches("-I");
+                format!("-I{}", top_dir.join(path).to_str().unwrap())
+            })
+            .collect::<Vec<String>>();
+        Ok(Binding {
+            defines,
+            include_dirs,
+            headers: vec![],
+            sources: vec![],
+        })
+    }
+
+    pub fn add_header(&mut self, header: &str) -> &mut Self {
+        self.headers.push(header.to_string());
+        self
+    }
+
+    pub fn add_system_header(&mut self, header: &str) -> &mut Self {
+        let gcc_include_paths = Self::get_gcc_include_paths().unwrap_or_default();
+        for include_path in &gcc_include_paths {
+            let full_path = format!("{}/{}", include_path.trim_start_matches("-I"), header);
+            if Path::new(&full_path).exists() {
+                self.headers.push(full_path);
+                return self;
+            }
+        }
+        panic!(
+            "System header {} not found in GCC include paths: {}",
+            header,
+            gcc_include_paths.join("\n")
+        );
+    }
+
+    pub fn add_headers(&mut self, headers: Vec<&str>) -> &mut Self {
+        for header in headers {
+            self.headers.push(header.to_string());
+        }
+        self
+    }
+
+    pub fn add_source(&mut self, source: &str) -> &mut Self {
+        self.sources.push(source.to_string());
+        self
+    }
+
+    pub fn add_sources(&mut self, sources: Vec<&str>) -> &mut Self {
+        for source in sources {
+            self.sources.push(source.to_string());
+        }
+        self
+    }
+
+    pub fn add_sources_from_dir(&mut self, dir_path: &str) -> &mut Self {
+        let entries = fs::read_dir(dir_path)
+            .map_err(|e| anyhow::anyhow!("Failed to read directory {}: {}", dir_path, e))
+            .unwrap();
+        for entry in entries {
+            let entry = entry.map_err(|e| anyhow::anyhow!("Failed to read entry in {}: {}", dir_path, e)).unwrap();
+            let path = entry.path();
+            if path.is_file() {
+                if let Some(ext) = path.extension() {
+                    if ext == "c" {
+                        if let Some(path_str) = path.to_str() {
+                            self.sources.push(path_str.to_string());
+                        }
+                    }
+                }
+            }
+        }
+        self
+    }
+
+    pub fn add_headers_from_dir(&mut self, dir_path: &str) -> &mut Self {
+        let entries = fs::read_dir(dir_path)
+            .map_err(|e| anyhow::anyhow!("Failed to read directory {}: {}", dir_path, e))
+            .unwrap();
+        for entry in entries {
+            let entry = entry.map_err(|e| anyhow::anyhow!("Failed to read entry in {}: {}", dir_path, e)).unwrap();
+            let path = entry.path();
+            if path.is_file() {
+                if let Some(ext) = path.extension() {
+                    if ext == "h" {
+                        if let Some(path_str) = path.to_str() {
+                            self.headers.push(path_str.to_string());
+                        }
+                    }
+                }
+            }
+        }
+        self
+    }
+
+    pub fn add_define(&mut self, define: &str) -> &mut Self {
+        if define.starts_with("-D") == false {
+            panic!("Define must start with '-D'");
+        }
+        self.defines.push(define.to_string());
+        self
+    }
+
+    pub fn add_include_dir(&mut self, include_dir: &str) -> &mut Self {
+        if include_dir.starts_with("-I") == false {
+            panic!("Include dir must start with '-I'");
+        }
+        self.include_dirs.push(include_dir.to_string());
+        self
+    }
+
+    pub fn add_include_dir_from_makefile(&mut self, makefile_path: &str, var_name: &str) -> &mut Self {
+        let include_dirs = Self::get_makefile_variable(makefile_path, var_name).unwrap_or_default();
+        for include_dir in include_dirs {
+            self.include_dirs.push(include_dir);
+        }
+        self
+    }
+
+    pub fn generate(&self, output_path: &str, config: &CompileConfig) -> Result<&Self> {
+        println!("cargo:rerun-if-changed={}", output_path);
+
+        // 使用 bindgen 生成绑定
+        let mut builder = bindgen::Builder::default();
+
+        // 设置编译目标和选项
+        match config {
+            CompileConfig::CortexM4_HardFloat_C(std) => {
+                builder = builder.clang_arg("--target=thumbv7em-none-eabihf");
+                builder = builder.clang_arg("-mcpu=cortex-m4");
+                builder = builder.clang_arg("-mthumb");
+                builder = builder.clang_arg("-mfpu=fpv4-sp-d16");
+                builder = builder.clang_arg("-mfloat-abi=hard");
+                builder = builder.clang_arg("-xc");
+                if !std.is_empty() {
+                    builder = builder.clang_arg(format!("-std={}", std));
+                }
+            }
+            CompileConfig::CortexM4_HardFloat_CPP(std) => {
+                builder = builder.clang_arg("--target=thumbv7em-none-eabihf");
+                builder = builder.clang_arg("-mcpu=cortex-m4");
+                builder = builder.clang_arg("-mthumb");
+                builder = builder.clang_arg("-mfpu=fpv4-sp-d16");
+                builder = builder.clang_arg("-mfloat-abi=hard");
+                builder = builder.clang_arg("-xc++");
+                if !std.is_empty() {
+                    builder = builder.clang_arg(format!("-std={}", std));
+                }
+            }
+            CompileConfig::CortexM4_SoftFloat_C(std) => {
+                builder = builder.clang_arg("--target=thumbv7em-none-eabihf");
+                builder = builder.clang_arg("-mcpu=cortex-m4");
+                builder = builder.clang_arg("-mthumb");
+                // builder = builder.clang_arg("-mfpu=fpv4-sp-d16");
+                builder = builder.clang_arg("-mfloat-abi=soft");
+                builder = builder.clang_arg("-xc");
+                if !std.is_empty() {
+                    builder = builder.clang_arg(format!("-std={}", std));
+                }
+            }
+            CompileConfig::CortexM4_SoftFloat_CPP(std) => {
+                builder = builder.clang_arg("--target=thumbv7em-none-eabihf");
+                builder = builder.clang_arg("-mcpu=cortex-m4");
+                builder = builder.clang_arg("-mthumb");
+                // builder = builder.clang_arg("-mfpu=fpv4-sp-d16");
+                builder = builder.clang_arg("-mfloat-abi=soft");
+                builder = builder.clang_arg("-xc++");
+                if !std.is_empty() {
+                    builder = builder.clang_arg(format!("-std={}", std));
+                }
+            }
+        }
+
+        // 添加预处理定义和包含目录
+        for define in &self.defines {
+            builder = builder.clang_arg(define);
+        }
+        for include_dir in &self.include_dirs {
+            builder = builder.clang_arg(include_dir);
+        }
+
+        // 添加工具链系统头文件路径
+        let gcc_include_paths = Self::get_gcc_include_paths()?;
+        for include_path in gcc_include_paths {
+            // println!("cargo:warning=Adding GCC include path: {}", include_path);
+            builder = builder.clang_arg(include_path);
+        }
+
+        // 添加头文件
+        builder = builder.headers(self.headers.clone());
+
+        // 将头文件列表写入临时文件
+        let header_list_path = output_path.to_string() + ".headers";
+        fs::write(&header_list_path, self.headers.join("\n")).expect("Failed to write header list file");
+        // 将包含文件列表写入到临时文件
+        let include_dir_list_path = output_path.to_string() + ".includes";
+        fs::write(&include_dir_list_path, self.include_dirs.join("\n")).expect("Failed to write include dir list file");
+        // 将预处理定义列表写入到临时文件
+        let define_list_path = output_path.to_string() + ".defines";
+        fs::write(&define_list_path, self.defines.join("\n")).expect("Failed to write define list file");
+
+        // 配置生成选项
+        let bindings = builder
+            .parse_callbacks(Box::new(bindgen::CargoCallbacks::new())) // 解析回调
+            .allowlist_recursively(true) // 递归允许所有类型和函数
+            .generate_comments(true) // 生成注释
+            // .blocklist_type("__BindgenBitfieldUnit") // 排除特定类型
+            .use_core() // 使用 core 库
+            .derive_default(true) // 允许默认派生
+            .derive_debug(true) // 允许调试派生
+            .size_t_is_usize(true) // 将 size_t 映射为 usize
+            .raw_line("#![allow(non_upper_case_globals)]") // 允许非大写全局变量
+            .raw_line("#![allow(non_camel_case_types)]") // 允许非驼峰类型
+            .raw_line("#![allow(non_snake_case)]") // 允许非蛇形命名
+            .generate()
+            .expect("Unable to generate bindings");
+
+        // 写入生成的绑定
+        bindings.write_to_file(output_path).expect("Couldn't write bindings!");
+
+        Ok(self)
+    }
+
+    pub fn compile(&self, output_lib: &str, config: &CompileConfig) -> Result<&Self> {
+        let mut builder = cc::Build::new();
+
+        // 设置编译目标和选项
+        match config {
+            CompileConfig::CortexM4_HardFloat_C(std) => {
+                let mut builder = &mut builder;
+                builder = builder.compiler("arm-none-eabi-gcc");
+                builder = builder.target("thumbv7em-none-eabihf");
+                builder = builder.flag("-mcpu=cortex-m4");
+                builder = builder.flag("-mthumb");
+                builder = builder.flag("-mfloat-abi=hard");
+                builder = builder.flag("-mfpu=fpv4-sp-d16");
+                if !std.is_empty() {
+                    builder = builder.flag(format!("-std={}", std));
+                }
+            }
+            CompileConfig::CortexM4_HardFloat_CPP(std) => {
+                let mut builder = &mut builder;
+                builder = builder.compiler("arm-none-eabi-g++");
+                builder = builder.target("thumbv7em-none-eabihf");
+                builder = builder.flag("-mcpu=cortex-m4");
+                builder = builder.flag("-mthumb");
+                builder = builder.flag("-mfloat-abi=hard");
+                builder = builder.flag("-mfpu=fpv4-sp-d16");
+                if !std.is_empty() {
+                    builder = builder.flag(format!("-std={}", std));
+                }
+            }
+            CompileConfig::CortexM4_SoftFloat_C(std) => {
+                let mut builder = &mut builder;
+                builder = builder.compiler("arm-none-eabi-gcc");
+                builder = builder.target("thumbv7em-none-eabihf");
+                builder = builder.flag("-mcpu=cortex-m4");
+                builder = builder.flag("-mthumb");
+                builder = builder.flag("-mfloat-abi=soft");
+                if !std.is_empty() {
+                    builder = builder.flag(format!("-std={}", std));
+                }
+            }
+            CompileConfig::CortexM4_SoftFloat_CPP(std) => {
+                let mut builder = &mut builder;
+                builder = builder.compiler("arm-none-eabi-g++");
+                builder = builder.target("thumbv7em-none-eabihf");
+                builder = builder.flag("-mcpu=cortex-m4");
+                builder = builder.flag("-mthumb");
+                builder = builder.flag("-mfloat-abi=soft");
+                if !std.is_empty() {
+                    builder = builder.flag(format!("-std={}", std));
+                }
+            }
+        }
+
+        // 添加定义
+        for define in &self.defines {
+            let def = define.trim_start_matches("-D");
+            if let Some(pos) = def.find('=') {
+                builder.define(&def[..pos], Some(&def[pos + 1..]));
+            } else {
+                builder.define(def, None);
+            }
+        }
+
+        // 添加包含路径
+        for include in &self.include_dirs {
+            let path = include.trim_start_matches("-I");
+            builder.include(path);
+            println!("cargo:rerun-if-changed={}", path);
+        }
+
+        // 添加 C 文件
+        for source in &self.sources {
+            builder.file(source);
+            eprintln!("  Compiling: {}", source);
+            println!("cargo:rerun-if-changed={}", source);
+        }
+
+        builder.compile(output_lib);
+
+        Ok(self)
+    }
+
+    /// 获取 arm-none-eabi-gcc 的系统头文件路径
+    fn get_gcc_include_paths() -> Result<Vec<String>> {
+        let output = Command::new("arm-none-eabi-gcc").args(&["-E", "-Wp,-v", "-xc", "/dev/null"]).output()?;
+
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let mut paths = Vec::new();
+        let mut in_include_section = false;
+
+        for line in stderr.lines() {
+            if line.contains("#include <...> search starts here:") {
+                in_include_section = true;
+                continue;
+            }
+            if line.contains("End of search list.") {
+                break;
+            }
+            if in_include_section {
+                let path = line.trim();
+                if !path.is_empty() {
+                    paths.push(format!("-I{}", path));
+                }
+            }
+        }
+
+        Ok(paths)
+    }
+
+    /// 从 Makefile 中获取指定变量的值
+    /// 支持多行续行 (\) 和变量追加 (+=) 操作
+    ///
+    /// # 参数
+    /// * `makefile_path` - Makefile 文件路径
+    /// * `var_name` - 要获取的变量名
+    ///
+    /// # 返回
+    /// * `Ok(Vec<String>)` - 变量的所有值（按空格分割）
+    /// * `Err` - 读取文件失败或其他错误
+    ///
+    /// # 示例
+    /// ```rust
+    /// let c_defs = get_makefile_variable("Makefile", "C_DEFS")?;
+    /// let c_includes = get_makefile_variable("Makefile", "C_INCLUDES")?;
+    /// ```
+    fn get_makefile_variable(makefile_path: &str, var_name: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+        let content = fs::read_to_string(makefile_path)?;
+        let lines: Vec<&str> = content.lines().collect();
+
+        let mut result = Vec::new();
+        let mut i = 0;
+
+        while i < lines.len() {
+            let line = lines[i].trim();
+
+            // 跳过注释和空行
+            if line.starts_with('#') || line.is_empty() {
+                i += 1;
+                continue;
+            }
+
+            // 检查是否是目标变量的赋值
+            if let Some((found_var, operator, initial_value)) = Self::parse_variable_assignment(line) {
+                if found_var == var_name {
+                    // 处理初始值
+                    if !initial_value.is_empty() {
+                        Self::extract_values(&initial_value, &mut result);
+                    }
+
+                    // 处理多行续行
+                    if line.ends_with('\\') {
+                        i += 1;
+                        while i < lines.len() {
+                            let continuation_line = lines[i].trim();
+
+                            let content = if continuation_line.ends_with('\\') {
+                                &continuation_line[..continuation_line.len() - 1].trim()
+                            } else {
+                                continuation_line
+                            };
+
+                            if !content.is_empty() {
+                                Self::extract_values(content, &mut result);
+                            }
+
+                            if !continuation_line.ends_with('\\') {
+                                break;
+                            }
+                            i += 1;
+                        }
+                    }
+
+                    // 如果是 = 操作，直接返回结果
+                    // 如果是 +=操作，继续查找后续的追加赋值
+                    if operator == "=" {
+                        break;
+                    }
+                }
+            }
+
+            i += 1;
+        }
+
+        Ok(result)
+    }
+
+    /// 解析变量赋值行，返回 (变量名, 操作符, 初始值)
+    fn parse_variable_assignment(line: &str) -> Option<(String, String, String)> {
+        if let Some(eq_pos) = line.find('=') {
+            let before_eq = &line[..eq_pos].trim();
+            let after_eq = &line[eq_pos + 1..].trim();
+
+            // 检查是否是 += 操作
+            let (var_name, operator) = if before_eq.ends_with('+') {
+                (&before_eq[..before_eq.len() - 1].trim(), "+=")
+            } else {
+                (before_eq, "=")
+            };
+
+            // 验证变量名是否有效（只包含字母、数字、下划线）
+            if var_name.chars().all(|c| c.is_alphanumeric() || c == '_') {
+                let initial_value = if after_eq.ends_with('\\') {
+                    &after_eq[..after_eq.len() - 1].trim()
+                } else {
+                    after_eq
+                };
+
+                return Some((var_name.to_string(), operator.to_string(), initial_value.to_string()));
+            }
+        }
+
+        None
+    }
+
+    /// 从字符串中提取值（按空格分割）
+    fn extract_values(content: &str, values: &mut Vec<String>) {
+        let items: Vec<String> = content.split_whitespace().filter(|s| !s.is_empty()).map(|s| s.to_string()).collect();
+
+        values.extend(items);
+    }
+}

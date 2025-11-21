@@ -4,7 +4,7 @@ FEATURES_ARGS = \
 	--features="util"
 
 all: 
-	cargo build --example emulate $(FEATURES_ARGS)
+	cargo build --examples $(FEATURES_ARGS)
 
 emulate:
 	cargo run --example emulate $(FEATURES_ARGS)

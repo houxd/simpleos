@@ -1,7 +1,9 @@
+use simpleos::OsInterface;
 use simpleos::alloc::boxed::Box;
+use simpleos::simpleos_init;
+use simpleos::sys::Executor;
 use simpleos::sys::sleep;
 use simpleos::sys::yield_now;
-use simpleos::sys::Executor;
 use simpleos::util;
 
 async fn task1() {
@@ -29,25 +31,28 @@ async fn task2() {
     }
 }
 
+struct OsInterfaceEmulate;
+impl OsInterface for OsInterfaceEmulate {
+    fn get_tick_count(&self) -> u32 {
+        static mut BOOT_TIMESTAMP: u128 = 0;
+
+        fn get_ms_from_unix_epoch() -> u128 {
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_millis()
+        }
+
+        unsafe {
+            let current_time = get_ms_from_unix_epoch();
+            (current_time - BOOT_TIMESTAMP) as u32
+        }
+    }
+}
+
 fn main() {
+    simpleos_init(&OsInterfaceEmulate);
     Executor::spawn("task1", Box::pin(task1()));
     Executor::spawn("task2", Box::pin(task2()));
     Executor::run();
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn get_tick_count() -> u32 {
-    static mut BOOT_TIMESTAMP: u128 = 0;
-
-    fn get_ms_from_unix_epoch() -> u128 {
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_millis()
-    }
-
-    unsafe {
-        let current_time = get_ms_from_unix_epoch();
-        (current_time - BOOT_TIMESTAMP) as u32
-    }
 }

@@ -12,11 +12,11 @@ mod panic_handler;
 // #[cfg(feature = "panic-handler")]
 // pub use panic_handler::panic;
 
-#[cfg(feature = "allocator")]
-pub mod allocator;
+#[cfg(feature = "allocator-cstdlib")]
+pub mod allocator_cstdlib;
 
-#[cfg(feature = "allocator")]
-pub use allocator::CAllocator;
+#[cfg(feature = "allocator-cstdlib")]
+pub use allocator_cstdlib::CAllocator;
 
 #[allow(unused)]
 pub use executor::*;
