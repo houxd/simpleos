@@ -86,7 +86,7 @@ pub struct Console {
 }
 
 singleton!(Console {
-    io: DummyIO::get_mut(),
+    io: DummyIO::mut_ref(),
     prompt: String::from("> "),
     history: HeaplessVec::new(),
     history_index: None,
@@ -106,7 +106,7 @@ async fn default_signal_handler(sig: u8) {
 #[allow(unused)]
 impl Console {
     pub fn init_io(io: &'static mut dyn ConsoleDriver) {
-        let console = Console::get_mut();
+        let console = Console::mut_ref();
         console.io = io;
     }
 
@@ -323,11 +323,11 @@ impl Console {
                                                             let wait_signal_future = async {
                                                                 loop {
                                                                     if let Some(sig) =
-                                                                        Console::get_mut()
+                                                                        Console::mut_ref()
                                                                             .signal_interrupt
                                                                             .pop()
                                                                     {
-                                                                        Console::get_mut()
+                                                                        Console::mut_ref()
                                                                             .signal_handler
                                                                             .call(sig)
                                                                             .await;
@@ -444,7 +444,7 @@ impl Console {
     where
         T: core::future::Future<Output = ()> + 'static,
     {
-        Executor::spawn("console", Box::pin(Console::get_mut()._start(on_cmd)));
+        Executor::spawn("console", Box::pin(Console::mut_ref()._start(on_cmd)));
         on_init();
         Executor::run();
     }
@@ -463,7 +463,7 @@ impl Console {
         F: Fn(u8) -> Fut + 'static,
         Fut: Future<Output = ()> + 'static,
     {
-        let console = Console::get_mut();
+        let console = Console::mut_ref();
         console.signal_handler = SignalHandler::new(handler);
     }
 
@@ -471,17 +471,17 @@ impl Console {
     where
         F: Fn(u8) + 'static,
     {
-        let console = Console::get_mut();
+        let console = Console::mut_ref();
         console.signal_handler = SignalHandler::from_sync(handler);
     }
 
     pub fn signal_interrupt(sig: u8) {
-        let mut console = Console::get_mut();
+        let mut console = Console::mut_ref();
         let _ = console.signal_interrupt.push(sig);
     }
 
     pub async fn read_key_async() -> Option<Key> {
-        let console = Console::get_mut();
+        let console = Console::mut_ref();
         let io = &mut console.io;
         let mut escape_state = EscapeState::Normal;
         loop {

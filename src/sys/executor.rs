@@ -73,7 +73,7 @@ impl Executor {
     }
 
     pub fn spawn(cmd: impl Into<String>, future: Pin<Box<dyn Future<Output = ()>>>) -> u16 {
-        let executor = Executor::get_mut();
+        let executor = Executor::mut_ref();
         let id = executor.next_id();
         executor
             .tasks
@@ -83,7 +83,7 @@ impl Executor {
     }
 
     pub fn run() {
-        let executor = Executor::get_mut();
+        let executor = Executor::mut_ref();
         loop {
             let mut task = {
                 let mut tasks = executor.tasks.borrow_mut();
@@ -125,18 +125,18 @@ impl Executor {
     /// 检查是否还有待执行的任务
     #[allow(unused)]
     pub fn has_tasks() -> bool {
-        !Self::get_mut().tasks.borrow().is_empty()
+        !Self::mut_ref().tasks.borrow().is_empty()
     }
 
     /// 获取当前任务队列长度
     #[allow(unused)]
     pub fn task_count() -> usize {
-        Self::get_mut().tasks.borrow().len()
+        Self::mut_ref().tasks.borrow().len()
     }
 
     /// 获取任务列表
     pub fn task_list() -> Vec<(u16, String)> {
-        Self::get_mut()
+        Self::mut_ref()
             .tasks
             .borrow()
             .iter()
@@ -146,7 +146,7 @@ impl Executor {
 
     /// 获取当前运行任务ID
     pub fn current_task_id() -> Option<u16> {
-        Self::get_mut().current_task_id.clone()
+        Self::mut_ref().current_task_id.clone()
     }
 
     /// 杀死任务
@@ -156,7 +156,7 @@ impl Executor {
             return;
         }
         // 从任务队列中移除该任务
-        Self::get_mut()
+        Self::mut_ref()
             .tasks
             .borrow_mut()
             .retain(|task| task.id != id);
@@ -167,7 +167,7 @@ impl Executor {
         if Self::current_task_id().is_none() {
             panic!("exit() called outside of task context");
         }
-        Self::get_mut().exit = true;
+        Self::mut_ref().exit = true;
         // 结束当前poll, 这会终止这个任务的执行
         loop {
             yield_now().await;
@@ -182,7 +182,7 @@ impl Executor {
             return true;
         }
         // 检查任务队列中是否存在该任务
-        let executor = Executor::get_mut();
+        let executor = Executor::mut_ref();
         let tasks = executor.tasks.borrow();
         tasks.iter().any(|task| task.id == id)
     }
@@ -195,7 +195,7 @@ impl Executor {
         }
         loop {
             {
-                let executor = Executor::get_mut();
+                let executor = Executor::mut_ref();
                 let tasks = executor.tasks.borrow();
                 if !tasks.iter().any(|task| task.id == id) {
                     break; // 任务已完成
