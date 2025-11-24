@@ -5,13 +5,14 @@ pub use core;
 
 pub mod sys;
 pub mod driver;
+pub mod console;
 // pub mod bindings;
 
 #[cfg(feature = "util")]
 pub mod util;
 
 pub trait OsInterface {
-    fn get_tick_count(&self) -> u32;
+    fn get_system_ms(&self) -> u32;
 }
 
 static mut OS_INTERFACE: Option<&'static dyn OsInterface> = None;

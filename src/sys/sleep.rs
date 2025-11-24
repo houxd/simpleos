@@ -2,15 +2,15 @@ use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
-pub struct SleepFuture {
+pub struct SleepMsFuture {
     escape: u32,
 }
 
-impl Future for SleepFuture {
+impl Future for SleepMsFuture {
     type Output = ();
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let current_tick = crate::os_interface().get_tick_count();
+        let current_tick = crate::os_interface().get_system_ms();
         if current_tick >= self.escape {
             Poll::Ready(())
         } else {
@@ -21,10 +21,15 @@ impl Future for SleepFuture {
 }
 
 #[allow(unused)]
-pub fn sleep(ticks: u32) -> SleepFuture {
+pub fn sleep_ms(ticks: u32) -> SleepMsFuture {
     unsafe {
-        SleepFuture {
-            escape: ticks + crate::os_interface().get_tick_count(),
+        SleepMsFuture {
+            escape: ticks + crate::os_interface().get_system_ms(),
         }
     }
+}
+
+#[allow(unused)]
+pub fn get_system_ms() -> u32 {
+    crate::os_interface().get_system_ms()
 }

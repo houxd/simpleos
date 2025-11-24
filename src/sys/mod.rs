@@ -1,5 +1,3 @@
-mod cmd;
-mod console;
 mod executor;
 mod join;
 mod select;
@@ -31,13 +29,4 @@ pub use join::*;
 pub use yield_now::*;
 
 #[allow(unused)]
-pub use console::*;
-
-#[allow(unused)]
-pub use cmd::*;
-
-#[allow(unused)]
 pub use select::*;
-
-pub use crate::print;
-pub use crate::println;

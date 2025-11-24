@@ -1,8 +1,7 @@
 // #![allow(unused)]
 
 use crate::{
-    driver::{i2c::i2c_driver::I2cDriver, rtc::rtc_driver::RtcDriver, Driver},
-    sys,
+    driver::{i2c::I2cDriver, rtc::RtcDriver, Driver},
     util,
 };
 use alloc::boxed::Box;
@@ -29,11 +28,11 @@ const STOP_BIT: u8 = 0x20;
 const RESET_BIT: u8 = 0x80;
 const VL_BIT: u8 = 0x80; // 数据有效位
 
-pub struct RtcHym8563 {
+pub struct Hym8563 {
     pub i2c: Box<&'static mut dyn I2cDriver>,
 }
 
-impl RtcHym8563 {
+impl Hym8563 {
     fn write_register(&mut self, reg: u8, data: u8) -> Result<()> {
         let buffer = [reg, data];
         self.i2c.i2c_write(HYM8563_ADDR, buffer.as_ref())
@@ -85,12 +84,12 @@ impl RtcHym8563 {
         self.write_register(REG_CTRL_STATUS2, RESET_BIT)
     }
 
-    async fn init(&mut self) -> Result<()> {
+    fn init(&mut self) -> Result<()> {
         // 复位 RTC
         self.reset()?;
 
         // 等待一段时间让复位完成, 在实际应用中可能需要添加延时
-        sys::sleep(10).await;
+        for _ in 0..10000 {}
 
         // 清除控制寄存器1，确保RTC启动
         self.write_register(REG_CTRL_STATUS1, 0x00)?;
@@ -100,7 +99,7 @@ impl RtcHym8563 {
 
         Ok(())
     }
-    async fn deinit(&mut self) -> Result<()> {
+    fn deinit(&mut self) -> Result<()> {
         // 停止 RTC
         let mut status = self.read_register(REG_CTRL_STATUS1)?;
         status |= STOP_BIT;
@@ -165,17 +164,17 @@ impl RtcHym8563 {
     }
 }
 
-impl Driver for RtcHym8563 {
-    fn driver_init(&mut self) -> sys::PinBoxFuture<'_, Result<()>> {
-        Box::pin(self.init())
+impl Driver for Hym8563 {
+    fn driver_init(&mut self) -> Result<()> {
+        self.init()
     }
 
-    fn driver_deinit(&mut self) -> sys::PinBoxFuture<'_, Result<()>> {
-        Box::pin(self.deinit())
+    fn driver_deinit(&mut self) -> Result<()> {
+        self.deinit()
     }
 }
 
-impl RtcDriver for RtcHym8563 {
+impl RtcDriver for Hym8563 {
     fn rtc_read_datetime(&mut self) -> Result<NaiveDateTime> {
         self.get_datetime()
     }

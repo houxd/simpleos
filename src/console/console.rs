@@ -1,96 +1,33 @@
-use crate::sys::{CmdParse, Executor, sleep, yield_now};
-use crate::{join, select, singleton};
+use crate::console::cmd::CmdParse;
+use crate::console::console_driver::ConsoleDriver;
+use crate::sys::{sleep_ms, yield_now, Executor};
+use crate::util::RingBuf;
+use crate::{join, println, select, singleton};
 use alloc::boxed::Box;
 use alloc::rc::Rc;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
-use core::any::Any;
 use core::cell::RefCell;
 use core::future::Future;
 use core::pin::Pin;
 use heapless::Vec as HeaplessVec;
 
-#[macro_export]
-macro_rules! print {
-    () => {{
-        let io = $crate::sys::Console::get_mut().io.as_mut();
-        io.flush();
-    }};
-    ($($arg:tt)*) => {{
-        let formatted = alloc::format!($($arg)*);
-        let io = $crate::sys::Console::get_mut().io.as_mut();
-        io.write(formatted.as_bytes());
-        io.flush();
-    }};
-}
-
-#[macro_export]
-macro_rules! println {
-    () => {{
-        let io = $crate::sys::Console::get_mut().io.as_mut();
-        io.write(b"\r\n");
-        io.flush();
-    }};
-    ($($arg:tt)*) => {{
-        let formatted = alloc::format!($($arg)*);
-        let io = $crate::sys::Console::get_mut().io.as_mut();
-        io.write(formatted.as_bytes());
-        io.write(b"\r\n");
-        io.flush();
-    }};
-}
-
 const HISTORY_SIZE: usize = 10; // 历史记录最大条数
 const LINE_BUFFER_SIZE: usize = 512; // 每行最大字符数
 
-/// 控制台输入输出接口
-pub trait ConsoleIO {
-    fn as_any(&mut self) -> &mut dyn Any;
-    fn get(&mut self) -> Option<u8>;
-    fn put(&mut self, byte: u8) -> bool;
-    fn flush(&mut self);
-
-    fn flush_rx(&mut self) {
-        while self.get().is_some() {}
-    }
-    #[allow(unused)]
-    fn read(&mut self, buffer: &mut [u8]) -> usize {
-        let mut count = 0;
-        for byte in buffer.iter_mut() {
-            if let Some(b) = self.get() {
-                *byte = b;
-                count += 1;
-            } else {
-                break;
-            }
-        }
-        count
-    }
-    #[allow(unused)]
-    fn write(&mut self, data: &[u8]) {
-        for byte in data.iter() {
-            if *byte == b'\n' {
-                self.put(b'\r');
-            }
-            self.put(*byte);
-        }
-    }
-}
-
 /// 控制台IO默认的空实现
 struct DummyIO;
-impl ConsoleIO for DummyIO {
-    fn as_any(&mut self) -> &mut dyn core::any::Any {
-        self
-    }
-    fn get(&mut self) -> Option<u8> {
+impl ConsoleDriver for DummyIO {
+    fn csl_getc(&mut self) -> Option<u8> {
         None
     }
-    fn put(&mut self, _byte: u8) -> bool {
+    fn csl_putc(&mut self, _byte: u8) -> bool {
         true
     }
-    fn flush(&mut self) {}
+    fn csl_flush(&mut self) {}
 }
+
+singleton!(DummyIO {});
 
 #[derive(Debug, Clone, Copy)]
 enum EscapeState {
@@ -134,7 +71,7 @@ impl SignalHandler {
 }
 
 pub struct Console {
-    pub io: Box<dyn ConsoleIO>,
+    pub io: &'static mut dyn ConsoleDriver,
     prompt: String,
     // 历史记录
     history: HeaplessVec<HeaplessVec<u8, LINE_BUFFER_SIZE>, HISTORY_SIZE>,
@@ -144,19 +81,19 @@ pub struct Console {
     cursor_pos: usize,
     // ANSI转义序列状态
     escape_state: EscapeState,
-    signal_interrupt: Option<u8>,
+    signal_interrupt: RingBuf<u8, 3>, // 用ringbuf更好, 中断要访问
     signal_handler: SignalHandler,
 }
 
 singleton!(Console {
-    io: Box::new(DummyIO {}),
+    io: DummyIO::get_mut(),
     prompt: String::from("> "),
     history: HeaplessVec::new(),
     history_index: None,
     current_line: HeaplessVec::new(),
     cursor_pos: 0,
     escape_state: EscapeState::Normal,
-    signal_interrupt: None,
+    signal_interrupt: RingBuf::new(),
     signal_handler: SignalHandler::new(default_signal_handler),
 });
 
@@ -168,7 +105,7 @@ async fn default_signal_handler(sig: u8) {
 
 #[allow(unused)]
 impl Console {
-    pub fn init_io(io: Box<dyn ConsoleIO>) {
+    pub fn init_io(io: &'static mut dyn ConsoleDriver) {
         let console = Console::get_mut();
         console.io = io;
     }
@@ -179,7 +116,7 @@ impl Console {
 
     fn show_prompt(&mut self) {
         self.io.write(self.prompt.as_bytes());
-        self.io.flush();
+        self.io.csl_flush();
     }
 
     // 添加命令到历史记录
@@ -228,7 +165,7 @@ impl Console {
     // 清除当前行显示
     fn clear_current_line(&mut self) {
         // 移动到行首
-        self.io.put(b'\r');
+        self.io.csl_putc(b'\r');
         // 清除整行
         self.io.write(b"\x1b[K");
         self.show_prompt();
@@ -241,27 +178,27 @@ impl Console {
         if self.cursor_pos < self.current_line.len() {
             let moves_back = self.current_line.len() - self.cursor_pos;
             for _ in 0..moves_back {
-                self.io.put(b'\x08'); // 退格
+                self.io.csl_putc(b'\x08'); // 退格
             }
         }
-        self.io.flush();
+        self.io.csl_flush();
     }
 
     // 向左移动光标
     fn move_cursor_left(&mut self) {
         if self.cursor_pos > 0 {
             self.cursor_pos -= 1;
-            self.io.put(b'\x08'); // 退格
-            self.io.flush();
+            self.io.csl_putc(b'\x08'); // 退格
+            self.io.csl_flush();
         }
     }
 
     // 向右移动光标
     fn move_cursor_right(&mut self) {
         if self.cursor_pos < self.current_line.len() {
-            self.io.put(self.current_line[self.cursor_pos]);
+            self.io.csl_putc(self.current_line[self.cursor_pos]);
             self.cursor_pos += 1;
-            self.io.flush();
+            self.io.csl_flush();
         }
     }
 
@@ -274,9 +211,9 @@ impl Console {
         // 如果光标在末尾，直接添加
         if self.cursor_pos == self.current_line.len() {
             if self.current_line.push(c).is_ok() {
-                self.io.put(c);
+                self.io.csl_putc(c);
                 self.cursor_pos += 1;
-                self.io.flush();
+                self.io.csl_flush();
             }
         } else {
             // 在中间插入字符 - 使用 Vec 的 insert 方法更简单
@@ -342,16 +279,16 @@ impl Console {
         self.show_prompt();
 
         loop {
-            let c = self.io.get();
+            let c = self.io.csl_getc();
             if let Some(b) = c {
                 match self.escape_state {
                     EscapeState::Normal => {
                         match b {
                             // 回车或换行，处理命令
                             b'\r' | b'\n' => {
-                                self.io.put(b'\r');
-                                self.io.put(b'\n');
-                                self.io.flush();
+                                self.io.csl_putc(b'\r');
+                                self.io.csl_putc(b'\n');
+                                self.io.csl_flush();
 
                                 if !self.current_line.is_empty() {
                                     // 创建一个临时的字节数组来避免借用检查问题
@@ -373,9 +310,9 @@ impl Console {
                                                 .map(|s| s.to_string())
                                                 .collect();
                                             if args.len() > 0 {
-                                                self.io.flush();
+                                                self.io.csl_flush();
                                                 self.io.flush_rx();
-                                                self.signal_interrupt = None;
+                                                self.signal_interrupt.clear();
                                                 self.signal_handler =
                                                     SignalHandler::new(default_signal_handler);
                                                 if let Some(cmd) = args.get(0) {
@@ -388,7 +325,7 @@ impl Console {
                                                                     if let Some(sig) =
                                                                         Console::get_mut()
                                                                             .signal_interrupt
-                                                                            .take()
+                                                                            .pop()
                                                                     {
                                                                         Console::get_mut()
                                                                             .signal_handler
@@ -420,11 +357,11 @@ impl Console {
                             }
                             // Ctrl+C (ASCII 3) - 终止当前输入
                             3 => {
-                                self.io.put(b'^');
-                                self.io.put(b'C');
-                                self.io.put(b'\r');
-                                self.io.put(b'\n');
-                                self.io.flush();
+                                self.io.csl_putc(b'^');
+                                self.io.csl_putc(b'C');
+                                self.io.csl_putc(b'\r');
+                                self.io.csl_putc(b'\n');
+                                self.io.csl_flush();
                                 self.current_line.clear();
                                 self.cursor_pos = 0;
                                 self.history_index = None;
@@ -539,8 +476,8 @@ impl Console {
     }
 
     pub fn signal_interrupt(sig: u8) {
-        let console = Console::get_mut();
-        console.signal_interrupt = Some(sig);
+        let mut console = Console::get_mut();
+        let _ = console.signal_interrupt.push(sig);
     }
 
     pub async fn read_key_async() -> Option<Key> {
@@ -548,7 +485,7 @@ impl Console {
         let io = &mut console.io;
         let mut escape_state = EscapeState::Normal;
         loop {
-            if let Some(b) = io.get() {
+            if let Some(b) = io.csl_getc() {
                 match escape_state {
                     EscapeState::Normal => match b {
                         b'\r' | b'\n' => return Some(Key::Enter),
@@ -669,7 +606,7 @@ impl CmdParse for Console {
                     };
                     let f2 = async {
                         loop {
-                            sleep(1000).await;
+                            sleep_ms(1000).await;
                             if let Ok(mut cc) = c.try_borrow_mut() {
                                 println!("poll freq: {} times/sec", *cc);
                                 *cc = 0;

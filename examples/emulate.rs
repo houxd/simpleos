@@ -2,38 +2,33 @@ use simpleos::OsInterface;
 use simpleos::alloc::boxed::Box;
 use simpleos::simpleos_init;
 use simpleos::sys::Executor;
-use simpleos::sys::sleep;
-use simpleos::sys::yield_now;
+use simpleos::sys::sleep_ms;
 use simpleos::util;
 
 async fn task1() {
     loop {
         println!("task1");
-        yield_now().await;
-        sleep(1000).await; // 模拟延时
+        sleep_ms(1000).await;
     }
 }
 
 async fn sub_test() {
-    sleep(1000).await; // 模拟延时
-    println!("sub_test");
+    sleep_ms(1000).await;
 }
 
 async fn task2() {
     loop {
+        println!("task2");
         let data = b"Hello, world!";
         let crc = util::crc16(data);
         println!("CRC16 of {:?} is {:04X}", data, crc);
-
-        sub_test().await; // 调用另一个异步函数
-        println!("task2");
-        sleep(2000).await; // 模拟延时
+        sub_test().await; 
     }
 }
 
 struct OsInterfaceEmulate;
 impl OsInterface for OsInterfaceEmulate {
-    fn get_tick_count(&self) -> u32 {
+    fn get_system_ms(&self) -> u32 {
         static mut BOOT_TIMESTAMP: u128 = 0;
 
         fn get_ms_from_unix_epoch() -> u128 {
