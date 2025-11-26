@@ -4,7 +4,6 @@ use crate::{
     driver::{i2c::I2cDriver, rtc::RtcDriver, Driver},
     util,
 };
-use alloc::boxed::Box;
 use anyhow::{anyhow, Result};
 use chrono::{Datelike, NaiveDate, NaiveDateTime, Timelike};
 
@@ -29,13 +28,17 @@ const RESET_BIT: u8 = 0x80;
 const VL_BIT: u8 = 0x80; // 数据有效位
 
 pub struct Hym8563 {
-    pub i2c: Box<&'static mut dyn I2cDriver>,
+    pub bus: &'static mut dyn I2cDriver,
 }
 
 impl Hym8563 {
+    pub const fn new(bus: &'static mut dyn I2cDriver) -> Self {
+        Self { bus }
+    }
+
     fn write_register(&mut self, reg: u8, data: u8) -> Result<()> {
         let buffer = [reg, data];
-        self.i2c.i2c_write(HYM8563_ADDR, buffer.as_ref())
+        self.bus.i2c_write(HYM8563_ADDR, buffer.as_ref())
     }
 
     fn burst_write(&mut self, start_reg: u8, data: &[u8]) -> Result<()> {
@@ -47,7 +50,7 @@ impl Hym8563 {
         buffer[0] = start_reg;
         buffer[1..=data.len()].copy_from_slice(data);
 
-        self.i2c
+        self.bus
             .i2c_write(HYM8563_ADDR, buffer[..=data.len()].as_ref())?;
         Ok(())
     }
@@ -55,11 +58,11 @@ impl Hym8563 {
     fn read_register(&mut self, reg: u8) -> Result<u8> {
         // 先发送寄存器地址
         let reg_buf = [reg];
-        self.i2c.i2c_write(HYM8563_ADDR, reg_buf.as_ref())?;
+        self.bus.i2c_write(HYM8563_ADDR, reg_buf.as_ref())?;
 
         // 再读取数据
         let mut buffer = [0u8; 1];
-        self.i2c.i2c_read(HYM8563_ADDR, buffer.as_mut())?;
+        self.bus.i2c_read(HYM8563_ADDR, buffer.as_mut())?;
 
         Ok(buffer[0])
     }
@@ -67,10 +70,10 @@ impl Hym8563 {
     fn burst_read(&mut self, start_reg: u8, buffer: &mut [u8]) -> Result<()> {
         // 先发送寄存器地址
         let reg_buf = [start_reg];
-        self.i2c.i2c_write(HYM8563_ADDR, reg_buf.as_ref())?;
+        self.bus.i2c_write(HYM8563_ADDR, reg_buf.as_ref())?;
 
         // 再读取数据
-        self.i2c.i2c_read(HYM8563_ADDR, buffer)?;
+        self.bus.i2c_read(HYM8563_ADDR, buffer)?;
 
         Ok(())
     }

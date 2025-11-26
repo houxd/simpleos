@@ -1,3 +1,4 @@
+use core::mem::MaybeUninit;
 
 /// 环形缓冲区结构体，支持泛型T和常量大小N（必须实现Copy和Default）。
 pub struct RingBuf<T, const N: usize> {
@@ -42,10 +43,12 @@ impl<'a, T: Copy + Default, const N: usize> IntoIterator for &'a RingBuf<T, N> {
 
 impl<T: Copy + Default, const N: usize> RingBuf<T, N> {
     /// 创建新缓冲区（N必须大于1）。
-    pub fn new() -> Self {
-        assert!(N > 1, "缓冲区大小必须大于1");
+    pub const fn new() -> Self {
+        assert!(N > 1, "RINGBUF SIZE ERR");
         Self {
-            buf: [T::default(); N],
+            buf: unsafe {
+                MaybeUninit::<[T; N]>::zeroed().assume_init()
+            },
             head: 0,
             tail: 0,
         }
