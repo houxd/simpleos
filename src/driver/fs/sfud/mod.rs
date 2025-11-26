@@ -1,12 +1,9 @@
-use crate::{
-    bindings,
-    // driver::{stm32::Stm32, stm32_gpio::Stm32Gpio},
-    println,
-    //  unsafe_get_mut,
-};
+use crate::{bindings, println};
+use crate::driver::spi::SpiDriver;
 
-// const SPI1_CS: Stm32Gpio = Stm32Gpio::new('A', 4);
-pub struct Sfud;
+pub struct Sfud {
+    spi: &'static mut dyn SpiDriver,
+}
 
 impl Sfud {
     pub fn init() {
@@ -90,7 +87,9 @@ impl Sfud {
     #[no_mangle]
     extern "C" fn sfud_print(content: *const i8) {
         println!("SFUD: {}", unsafe {
-            core::ffi::CStr::from_ptr(content as _).to_str().unwrap_or("Invalid UTF-8")
+            core::ffi::CStr::from_ptr(content as _)
+                .to_str()
+                .unwrap_or("Invalid UTF-8")
         });
     }
 }

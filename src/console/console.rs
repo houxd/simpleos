@@ -15,19 +15,19 @@ use heapless::Vec as HeaplessVec;
 const HISTORY_SIZE: usize = 10; // 历史记录最大条数
 const LINE_BUFFER_SIZE: usize = 512; // 每行最大字符数
 
-/// 控制台IO默认的空实现
-struct DummyIO;
-impl ConsoleDriver for DummyIO {
-    fn csl_getc(&mut self) -> Option<u8> {
+/// 控制台设备默认的空实现
+struct DummyConsole;
+impl ConsoleDriver for DummyConsole {
+    fn console_getc(&mut self) -> Option<u8> {
         None
     }
-    fn csl_putc(&mut self, _byte: u8) -> bool {
+    fn console_putc(&mut self, _byte: u8) -> bool {
         true
     }
-    fn csl_flush(&mut self) {}
+    fn console_flush(&mut self) {}
 }
 
-singleton!(DummyIO {});
+singleton!(DummyConsole {});
 
 #[derive(Debug, Clone, Copy)]
 enum EscapeState {
@@ -71,7 +71,7 @@ impl SignalHandler {
 }
 
 pub struct Console {
-    pub io: &'static mut dyn ConsoleDriver,
+    pub dev: &'static mut dyn ConsoleDriver,
     prompt: String,
     // 历史记录
     history: HeaplessVec<HeaplessVec<u8, LINE_BUFFER_SIZE>, HISTORY_SIZE>,
@@ -86,7 +86,7 @@ pub struct Console {
 }
 
 singleton!(Console {
-    io: DummyIO::mut_ref(),
+    dev: DummyConsole::mut_ref(),
     prompt: String::from("> "),
     history: HeaplessVec::new(),
     history_index: None,
@@ -105,9 +105,14 @@ async fn default_signal_handler(sig: u8) {
 
 #[allow(unused)]
 impl Console {
-    pub fn init_io(io: &'static mut dyn ConsoleDriver) {
+    pub fn set_device(dev: &'static mut dyn ConsoleDriver) {
         let console = Console::mut_ref();
-        console.io = io;
+        console.dev = dev;
+    }
+
+    #[inline]
+    pub fn device() -> &'static mut dyn ConsoleDriver {
+        Console::mut_ref().dev
     }
 
     pub fn set_prompt(&mut self, prompt: &str) {
@@ -115,8 +120,8 @@ impl Console {
     }
 
     fn show_prompt(&mut self) {
-        self.io.write(self.prompt.as_bytes());
-        self.io.csl_flush();
+        self.dev.console_write(self.prompt.as_bytes());
+        self.dev.console_flush();
     }
 
     // 添加命令到历史记录
@@ -165,40 +170,40 @@ impl Console {
     // 清除当前行显示
     fn clear_current_line(&mut self) {
         // 移动到行首
-        self.io.csl_putc(b'\r');
+        self.dev.console_putc(b'\r');
         // 清除整行
-        self.io.write(b"\x1b[K");
+        self.dev.console_write(b"\x1b[K");
         self.show_prompt();
     }
 
     // 重绘当前行
     fn redraw_line(&mut self) {
-        self.io.write(self.current_line.as_slice());
+        self.dev.console_write(self.current_line.as_slice());
         // 移动光标到正确位置
         if self.cursor_pos < self.current_line.len() {
             let moves_back = self.current_line.len() - self.cursor_pos;
             for _ in 0..moves_back {
-                self.io.csl_putc(b'\x08'); // 退格
+                self.dev.console_putc(b'\x08'); // 退格
             }
         }
-        self.io.csl_flush();
+        self.dev.console_flush();
     }
 
     // 向左移动光标
     fn move_cursor_left(&mut self) {
         if self.cursor_pos > 0 {
             self.cursor_pos -= 1;
-            self.io.csl_putc(b'\x08'); // 退格
-            self.io.csl_flush();
+            self.dev.console_putc(b'\x08'); // 退格
+            self.dev.console_flush();
         }
     }
 
     // 向右移动光标
     fn move_cursor_right(&mut self) {
         if self.cursor_pos < self.current_line.len() {
-            self.io.csl_putc(self.current_line[self.cursor_pos]);
+            self.dev.console_putc(self.current_line[self.cursor_pos]);
             self.cursor_pos += 1;
-            self.io.csl_flush();
+            self.dev.console_flush();
         }
     }
 
@@ -211,9 +216,9 @@ impl Console {
         // 如果光标在末尾，直接添加
         if self.cursor_pos == self.current_line.len() {
             if self.current_line.push(c).is_ok() {
-                self.io.csl_putc(c);
+                self.dev.console_putc(c);
                 self.cursor_pos += 1;
-                self.io.csl_flush();
+                self.dev.console_flush();
             }
         } else {
             // 在中间插入字符 - 使用 Vec 的 insert 方法更简单
@@ -274,21 +279,21 @@ impl Console {
     where
         T: core::future::Future<Output = ()> + 'static,
     {
-        self.io.flush_rx();
+        self.dev.console_flush_rx();
         crate::println!("Console started. Type 'help' for commands.");
         self.show_prompt();
 
         loop {
-            let c = self.io.csl_getc();
+            let c = self.dev.console_getc();
             if let Some(b) = c {
                 match self.escape_state {
                     EscapeState::Normal => {
                         match b {
                             // 回车或换行，处理命令
                             b'\r' | b'\n' => {
-                                self.io.csl_putc(b'\r');
-                                self.io.csl_putc(b'\n');
-                                self.io.csl_flush();
+                                self.dev.console_putc(b'\r');
+                                self.dev.console_putc(b'\n');
+                                self.dev.console_flush();
 
                                 if !self.current_line.is_empty() {
                                     // 创建一个临时的字节数组来避免借用检查问题
@@ -310,8 +315,8 @@ impl Console {
                                                 .map(|s| s.to_string())
                                                 .collect();
                                             if args.len() > 0 {
-                                                self.io.csl_flush();
-                                                self.io.flush_rx();
+                                                self.dev.console_flush();
+                                                self.dev.console_flush_rx();
                                                 self.signal_interrupt.clear();
                                                 self.signal_handler =
                                                     SignalHandler::new(default_signal_handler);
@@ -357,11 +362,11 @@ impl Console {
                             }
                             // Ctrl+C (ASCII 3) - 终止当前输入
                             3 => {
-                                self.io.csl_putc(b'^');
-                                self.io.csl_putc(b'C');
-                                self.io.csl_putc(b'\r');
-                                self.io.csl_putc(b'\n');
-                                self.io.csl_flush();
+                                self.dev.console_putc(b'^');
+                                self.dev.console_putc(b'C');
+                                self.dev.console_putc(b'\r');
+                                self.dev.console_putc(b'\n');
+                                self.dev.console_flush();
                                 self.current_line.clear();
                                 self.cursor_pos = 0;
                                 self.history_index = None;
@@ -482,10 +487,10 @@ impl Console {
 
     pub async fn read_key_async() -> Option<Key> {
         let console = Console::mut_ref();
-        let io = &mut console.io;
+        let io = &mut console.dev;
         let mut escape_state = EscapeState::Normal;
         loop {
-            if let Some(b) = io.csl_getc() {
+            if let Some(b) = io.console_getc() {
                 match escape_state {
                     EscapeState::Normal => match b {
                         b'\r' | b'\n' => return Some(Key::Enter),

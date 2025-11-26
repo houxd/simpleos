@@ -5,8 +5,10 @@ pub trait Driver {
     fn driver_deinit(&mut self) -> Result<()>;
 }
 
+pub mod gpio;
 pub mod i2c;
 pub mod rtc;
+pub mod spi;
 pub mod uart;
 // pub mod fs;
 pub mod device;

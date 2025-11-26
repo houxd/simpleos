@@ -1,39 +1,41 @@
 #[macro_export]
 macro_rules! device {
-    ($type:ident { $($field:ident: $field_type:ty = $value:expr),* $(,)? }) => {
+    ($board_name:ident { $($device_name:ident: $driver_type:ty = $value:expr),* $(,)? }) => {
+        $(
+            // 生成设备结构体定义
+            pub struct $device_name {
+                dev: $driver_type,
+            }
 
-        // 生成结构体定义
-        pub struct $type {
-            $(pub $field: $field_type),*
-        }
+            // 生成每个设备的单例结构体
+            crate::singleton!($device_name { dev: $value });
 
-        // 生成单例结构体
-        crate::singleton!($type { $($field: $value),* });
-
-        // 生成每个字段的快捷访问方法
-        impl $type {
-            $(
+            // 生成每个设备的快捷访问方法
+            impl $device_name {
                 #[inline]
-                pub fn $field() -> &'static mut $field_type {
-                    &mut Self::mut_ref().$field
+                pub fn dev() -> &'static mut $driver_type {
+                    &mut Self::mut_ref().dev
                 }
-            )*
+            }
+        )*
+
+        // 生成板级设备初始化和反初始化方法
+        struct $board_name;
+        impl $board_name {
+            pub fn devices_init() -> anyhow::Result<()> {
+                $(
+                    $device_name::dev().driver_init()?;
+                )*
+                Ok(())
+            }
+            pub fn devices_deinit() -> anyhow::Result<()> {
+                $(
+                    $device_name::dev().driver_deinit()?;
+                )*
+                Ok(())
+            }
         }
 
-        // 生成初始化方法
-        impl $type {
-            pub fn device_init() -> anyhow::Result<()>{
-                $(
-                    Self::mut_ref().$field.driver_init()?;
-                )*
-                Ok(())
-            }
-            pub fn device_deinit() -> anyhow::Result<()>{
-                $(
-                    Self::mut_ref().$field.driver_deinit()?;
-                )*
-                Ok(())
-            }
-        }
     };
 }
+
