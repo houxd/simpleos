@@ -1,11 +1,13 @@
-use core::any::Any;
-
 use crate::{
     bindings::*,
-    driver::fs::{DirEntry, FileHandle, FsHandle, FsInfo, Whence},
+    driver::{
+        fs::{DirEntry, FileHandle, FsHandle, FsInfo, Whence},
+        mtd::MtdDriver,
+    },
 };
 use alloc::{boxed::Box, vec::Vec};
 use anyhow::{anyhow, Result};
+use core::any::Any;
 
 pub struct LittleFs {
     lfs: lfs_t,
@@ -13,78 +15,93 @@ pub struct LittleFs {
 }
 
 impl LittleFs {
-    #[no_mangle]
-    extern "C" fn lfs_read(
-        c: *const lfs_config,
-        block: lfs_block_t,
-        off: lfs_off_t,
-        buffer: *mut core::ffi::c_void,
-        size: lfs_size_t,
-    ) -> core::ffi::c_int {
-        unsafe {
-            let flash = (*c).context as *const sfud_flash;
-            let err = sfud_read(flash, block * (*c).block_size + off, size as _, buffer as *mut u8);
-            if err != sfud_err_SFUD_SUCCESS {
-                return -1;
-            }
-        }
-        0
-    }
-    #[no_mangle]
-    extern "C" fn lfs_prog(
-        c: *const lfs_config,
-        block: lfs_block_t,
-        off: lfs_off_t,
-        buffer: *const core::ffi::c_void,
-        size: lfs_size_t,
-    ) -> core::ffi::c_int {
-        unsafe {
-            let flash = (*c).context as *const sfud_flash;
-            let err = sfud_write(flash, block * (*c).block_size + off, size as _, buffer as *mut u8);
-            if err != sfud_err_SFUD_SUCCESS {
-                return -1;
-            }
-        }
-        0
-    }
-    #[no_mangle]
-    extern "C" fn lfs_erase(c: *const lfs_config, block: lfs_block_t) -> core::ffi::c_int {
-        unsafe {
-            let flash = (*c).context as *const sfud_flash;
-            let err = sfud_erase(flash, block * (*c).block_size, (*c).block_size as _);
-            if err != sfud_err_SFUD_SUCCESS {
-                return -1;
-            }
-        }
-        0
-    }
-    #[no_mangle]
-    extern "C" fn lfs_sync(_c: *const lfs_config) -> core::ffi::c_int {
-        0
-    }
+    pub fn new(mtd: &'static mut dyn MtdDriver) -> Self {
+        // 构建littlefs配置
+        let mut lfs_cfg = lfs_config::default();
+        lfs_cfg.read = Some(lfs_read);
+        lfs_cfg.prog = Some(lfs_prog);
+        lfs_cfg.erase = Some(lfs_erase);
+        lfs_cfg.sync = Some(lfs_sync);
+        lfs_cfg.read_size = 256;
+        lfs_cfg.prog_size = 256;
+        // lfs_cfg.block_size = mtd.block_size();
+        // lfs_cfg.block_count = mtd.total_size() / mtd.block_size();
+        lfs_cfg.block_size = 4096;
+        lfs_cfg.block_count = (8 * 1024 * 1024) / 4096;
+        lfs_cfg.cache_size = 256 * 8;
+        lfs_cfg.lookahead_size = 128;
+        lfs_cfg.block_cycles = 500;
 
-    pub fn new() -> Self {
-        unsafe {
-            // 构建littlefs配置
-            let mut lfs_cfg = lfs_config::default();
-            lfs_cfg.context = sfud_get_device(0) as *mut _;
-            lfs_cfg.read = Some(Self::lfs_read);
-            lfs_cfg.prog = Some(Self::lfs_prog);
-            lfs_cfg.erase = Some(Self::lfs_erase);
-            lfs_cfg.sync = Some(Self::lfs_sync);
-            lfs_cfg.read_size = 256;
-            lfs_cfg.prog_size = 256;
-            lfs_cfg.block_size = 4096;
-            lfs_cfg.block_count = (8 * 1024 * 1024) / 4096;
-            lfs_cfg.cache_size = 256 * 8;
-            lfs_cfg.lookahead_size = 128;
-            lfs_cfg.block_cycles = 500;
-            LittleFs {
-                lfs: lfs_t::default(),
-                lfs_cfg,
-            }
+        let mtd_ptr = Box::leak(Box::new(mtd)) as *mut &'static mut dyn MtdDriver;
+        lfs_cfg.context = mtd_ptr as *mut core::ffi::c_void;
+
+        LittleFs {
+            lfs: lfs_t::default(),
+            lfs_cfg,
         }
     }
+}
+
+impl Drop for LittleFs {
+    fn drop(&mut self) {
+        unsafe {
+            // 释放 MTD 驱动的 Box
+            let mtd_ptr = self.lfs_cfg.context as *mut &'static mut dyn MtdDriver;
+            let _ = Box::from_raw(mtd_ptr);
+        }
+    }
+}
+
+#[no_mangle]
+extern "C" fn lfs_read(
+    c: *const lfs_config,
+    block: lfs_block_t,
+    off: lfs_off_t,
+    buffer: *mut core::ffi::c_void,
+    size: lfs_size_t,
+) -> core::ffi::c_int {
+    unsafe {
+        let mtd = &mut **((*c).context as *mut &'static mut dyn MtdDriver);
+        let addr = block * (*c).block_size + off;
+        let buf_slice = core::slice::from_raw_parts_mut(buffer as *mut u8, size as usize);
+        match mtd.mtd_read(addr as u32, buf_slice) {
+            Ok(_) => 0,
+            Err(_) => -1,
+        }
+    }
+}
+#[no_mangle]
+extern "C" fn lfs_prog(
+    c: *const lfs_config,
+    block: lfs_block_t,
+    off: lfs_off_t,
+    buffer: *const core::ffi::c_void,
+    size: lfs_size_t,
+) -> core::ffi::c_int {
+    unsafe {
+        let mtd = &mut **((*c).context as *mut &'static mut dyn MtdDriver);
+        let addr = block * (*c).block_size + off;
+        let buf_slice = core::slice::from_raw_parts(buffer as *const u8, size as usize);
+        match mtd.mtd_write(addr as u32, buf_slice) {
+            Ok(_) => 0,
+            Err(_) => -1,
+        }
+    }
+}
+#[no_mangle]
+extern "C" fn lfs_erase(c: *const lfs_config, block: lfs_block_t) -> core::ffi::c_int {
+    unsafe {
+        let mtd = &mut **((*c).context as *mut &'static mut dyn MtdDriver);
+        let addr = block * (*c).block_size;
+        match mtd.mtd_erase(addr as u32, (*c).block_size as u32) {
+            Ok(_) => 0,
+            Err(_) => -1,
+        }
+    }
+}
+#[no_mangle]
+extern "C" fn lfs_sync(_c: *const lfs_config) -> core::ffi::c_int {
+    0
 }
 
 impl FsHandle for LittleFs {
@@ -227,10 +244,26 @@ impl FsHandle for LittleFs {
             let flags = match mode {
                 "r" => lfs_open_flags_LFS_O_RDONLY,
                 "r+" => lfs_open_flags_LFS_O_RDWR,
-                "w" => lfs_open_flags_LFS_O_WRONLY | lfs_open_flags_LFS_O_CREAT | lfs_open_flags_LFS_O_TRUNC,
-                "w+" => lfs_open_flags_LFS_O_RDWR | lfs_open_flags_LFS_O_CREAT | lfs_open_flags_LFS_O_TRUNC,
-                "a" => lfs_open_flags_LFS_O_WRONLY | lfs_open_flags_LFS_O_CREAT | lfs_open_flags_LFS_O_APPEND,
-                "a+" => lfs_open_flags_LFS_O_RDWR | lfs_open_flags_LFS_O_CREAT | lfs_open_flags_LFS_O_APPEND,
+                "w" => {
+                    lfs_open_flags_LFS_O_WRONLY
+                        | lfs_open_flags_LFS_O_CREAT
+                        | lfs_open_flags_LFS_O_TRUNC
+                }
+                "w+" => {
+                    lfs_open_flags_LFS_O_RDWR
+                        | lfs_open_flags_LFS_O_CREAT
+                        | lfs_open_flags_LFS_O_TRUNC
+                }
+                "a" => {
+                    lfs_open_flags_LFS_O_WRONLY
+                        | lfs_open_flags_LFS_O_CREAT
+                        | lfs_open_flags_LFS_O_APPEND
+                }
+                "a+" => {
+                    lfs_open_flags_LFS_O_RDWR
+                        | lfs_open_flags_LFS_O_CREAT
+                        | lfs_open_flags_LFS_O_APPEND
+                }
                 _ => return Err(anyhow!("Invalid mode: {}", mode)),
             };
             let res = lfs_file_open(&mut self.lfs, file_ptr, c_path.as_ptr(), flags as _);
@@ -312,10 +345,23 @@ impl FsHandle for LittleFs {
         }
     }
 
-    fn seek(&mut self, file: &mut Box<dyn FileHandle>, pos: isize, whence: Whence) -> Result<isize> {
+    fn seek(
+        &mut self,
+        file: &mut Box<dyn FileHandle>,
+        pos: isize,
+        whence: Whence,
+    ) -> Result<isize> {
         unsafe {
-            let lfs_file = file.as_any_mut().downcast_mut::<lfs_file>().ok_or_else(|| anyhow!("Invalid file type"))?;
-            let res = lfs_file_seek(&mut self.lfs, lfs_file as *mut lfs_file, pos as lfs_soff_t, whence as i32);
+            let lfs_file = file
+                .as_any_mut()
+                .downcast_mut::<lfs_file>()
+                .ok_or_else(|| anyhow!("Invalid file type"))?;
+            let res = lfs_file_seek(
+                &mut self.lfs,
+                lfs_file as *mut lfs_file,
+                pos as lfs_soff_t,
+                whence as i32,
+            );
             if res < 0 {
                 Err(anyhow!("LittleFS seek file failed: {}", res))
             } else {

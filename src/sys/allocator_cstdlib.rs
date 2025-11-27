@@ -1,10 +1,11 @@
 use core::alloc::{GlobalAlloc, Layout};
 use core::ffi::c_void;
+use core::ffi::c_uint;
 
 unsafe extern "C" {
-    fn malloc(size: usize) -> *mut c_void;
+    fn malloc(size: c_uint) -> *mut c_void;
     fn free(ptr: *mut c_void);
-    fn aligned_alloc(alignment: usize, size: usize) -> *mut c_void;
+    fn aligned_alloc(alignment: c_uint, size: c_uint) -> *mut c_void;
 }
 
 pub struct CAllocator;

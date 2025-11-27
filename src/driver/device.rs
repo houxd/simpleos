@@ -1,3 +1,11 @@
+use crate::{console::ConsoleDriver, driver::systick::SysTickDriver};
+
+pub trait Device {
+    fn default_console(&self) -> &'static mut dyn ConsoleDriver;
+    fn default_systick(&self) -> &'static mut dyn SysTickDriver;
+    fn init(&self);
+}
+
 /// 设备表宏定义
 /// 用于生成设备的单例结构体和板级设备初始化/反初始化方法
 /// 语法:
@@ -28,7 +36,6 @@ macro_rules! device_table {
         )*
 
         // 生成板级设备初始化和反初始化方法
-        struct $board_name;
         impl $board_name {
             pub fn devices_init() -> anyhow::Result<()> {
                 $(

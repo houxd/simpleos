@@ -38,7 +38,7 @@
 /* 这里最多支持3个spi falsh? 目前只支持一个 */
 #define SFUD_FLASH_DEVICE_TABLE                                                \
 {                                                                              \
-    [0] = {.name = "default", .spi.name = "default"},           \
+    /* [0] = {.name = "default", .spi.name = "default"},  */         \
 }
 
 //#define SFUD_USING_QSPI

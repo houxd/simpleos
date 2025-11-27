@@ -1,4 +1,5 @@
 use simpleos::alloc::boxed::Box;
+use simpleos::device_table;
 use simpleos::driver::systick::SysTickDriver;
 use simpleos::driver::Driver;
 use simpleos::SimpleOs;
@@ -56,10 +57,26 @@ impl SysTickDriver for SysTickEmulate {
         }
     }
 }
-singleton!(SysTickEmulate {});
+
+struct BoardEmulate;
+device_table!(BoardEmulate, {
+    SysTick0: SysTickEmulate = SysTickEmulate{},
+});
+impl simpleos::driver::device::Device for BoardEmulate {
+    fn default_console(&self) -> &'static mut dyn simpleos::console::ConsoleDriver {
+        unimplemented!()
+    }
+    fn default_systick(&self) -> &'static mut dyn simpleos::driver::systick::SysTickDriver {
+        SysTick0::dev()
+    }
+    
+    fn init(&self) {
+        
+    }
+}
 
 fn main() {
-    SimpleOs::init(SysTickEmulate::ref_mut());
+    SimpleOs::init(&BoardEmulate);
     Executor::spawn("task1", Box::pin(task1()));
     Executor::spawn("task2", Box::pin(task2()));
     Executor::run();

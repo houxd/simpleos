@@ -5,52 +5,28 @@ use std::process::Command;
 
 fn main() {
     let bindings_path = "src/bindings/bindings.rs";
-
-    let compile_config = &CompileConfig::CortexM4_HardFloat_C("gnu11");
     let mut bindings = Binding::new();
-
-    // let stdlib = Binding::new().add_system_header("stdlib.h").clone();
-
-    // let hal = Binding::from_makefile("../Makefile")
-    //     .expect("Failed to create Binding from Makefile")
-    //     .add_headers_from_dir("../Core/Inc")
-    //     .clone();
-
     let sfud = Binding::new()
-        .add_include_dir("-Isrc/driver/fs/sfud")
-        // .add_include_dir_from_makefile("../Makefile", "C_INCLUDES")
-        .add_headers_from_dir("src/driver/fs/sfud")
-        .add_sources_from_dir("src/driver/fs/sfud")
-        //.dump()
-        .compile("sfud", compile_config)
+        .add_include_dir("-Isrc/driver/mtd/sfud")
+        .add_headers_from_dir("src/driver/mtd/sfud")
+        .add_sources_from_dir("src/driver/mtd/sfud")
+        .compile("sfud")
         .expect("Failed to compile SFUD C code")
         .clone();
     bindings = bindings.concat(sfud);
 
     let littlefs = Binding::new()
         .add_include_dir("-Isrc/driver/fs/littlefs")
-        // .add_include_dir_from_makefile("../Makefile", "C_INCLUDES")
         .add_headers_from_dir("src/driver/fs/littlefs")
         .add_sources_from_dir("src/driver/fs/littlefs")
-        //.dump()
-        .compile("littlefs", compile_config)
+        .compile("littlefs")
         .expect("Failed to compile LittleFS C code")
         .clone();
     bindings = bindings.concat(littlefs);
 
     bindings
-        // .dump()
-        .generate(bindings_path, compile_config)
+        .generate(bindings_path)
         .expect("Failed to generate bindings");
-}
-
-#[allow(unused)]
-#[allow(non_camel_case_types)]
-enum CompileConfig {
-    CortexM4_HardFloat_C(&'static str),
-    CortexM4_HardFloat_CPP(&'static str),
-    CortexM4_SoftFloat_C(&'static str),
-    CortexM4_SoftFloat_CPP(&'static str),
 }
 
 #[derive(Debug, Clone)]
@@ -262,59 +238,11 @@ impl Binding {
         self
     }
 
-    pub fn generate(&self, output_path: &str, config: &CompileConfig) -> Result<&Self> {
+    pub fn generate(&self, output_path: &str) -> Result<&Self> {
         println!("cargo:rerun-if-changed={}", output_path);
 
         // 使用 bindgen 生成绑定
         let mut builder = bindgen::Builder::default();
-
-        // 设置编译目标和选项
-        match config {
-            CompileConfig::CortexM4_HardFloat_C(std) => {
-                builder = builder.clang_arg("--target=thumbv7em-none-eabihf");
-                builder = builder.clang_arg("-mcpu=cortex-m4");
-                builder = builder.clang_arg("-mthumb");
-                builder = builder.clang_arg("-mfpu=fpv4-sp-d16");
-                builder = builder.clang_arg("-mfloat-abi=hard");
-                builder = builder.clang_arg("-xc");
-                if !std.is_empty() {
-                    builder = builder.clang_arg(format!("-std={}", std));
-                }
-            }
-            CompileConfig::CortexM4_HardFloat_CPP(std) => {
-                builder = builder.clang_arg("--target=thumbv7em-none-eabihf");
-                builder = builder.clang_arg("-mcpu=cortex-m4");
-                builder = builder.clang_arg("-mthumb");
-                builder = builder.clang_arg("-mfpu=fpv4-sp-d16");
-                builder = builder.clang_arg("-mfloat-abi=hard");
-                builder = builder.clang_arg("-xc++");
-                if !std.is_empty() {
-                    builder = builder.clang_arg(format!("-std={}", std));
-                }
-            }
-            CompileConfig::CortexM4_SoftFloat_C(std) => {
-                builder = builder.clang_arg("--target=thumbv7em-none-eabihf");
-                builder = builder.clang_arg("-mcpu=cortex-m4");
-                builder = builder.clang_arg("-mthumb");
-                // builder = builder.clang_arg("-mfpu=fpv4-sp-d16");
-                builder = builder.clang_arg("-mfloat-abi=soft");
-                builder = builder.clang_arg("-xc");
-                if !std.is_empty() {
-                    builder = builder.clang_arg(format!("-std={}", std));
-                }
-            }
-            CompileConfig::CortexM4_SoftFloat_CPP(std) => {
-                builder = builder.clang_arg("--target=thumbv7em-none-eabihf");
-                builder = builder.clang_arg("-mcpu=cortex-m4");
-                builder = builder.clang_arg("-mthumb");
-                // builder = builder.clang_arg("-mfpu=fpv4-sp-d16");
-                builder = builder.clang_arg("-mfloat-abi=soft");
-                builder = builder.clang_arg("-xc++");
-                if !std.is_empty() {
-                    builder = builder.clang_arg(format!("-std={}", std));
-                }
-            }
-        }
 
         // 添加预处理定义和包含目录
         for define in &self.defines {
@@ -366,58 +294,8 @@ impl Binding {
         Ok(self)
     }
 
-    pub fn compile(&self, output_lib: &str, config: &CompileConfig) -> Result<&Self> {
+    pub fn compile(&self, output_lib: &str) -> Result<&Self> {
         let mut builder = cc::Build::new();
-
-        // 设置编译目标和选项
-        match config {
-            CompileConfig::CortexM4_HardFloat_C(std) => {
-                let mut builder = &mut builder;
-                builder = builder.compiler("arm-none-eabi-gcc");
-                builder = builder.target("thumbv7em-none-eabihf");
-                builder = builder.flag("-mcpu=cortex-m4");
-                builder = builder.flag("-mthumb");
-                builder = builder.flag("-mfloat-abi=hard");
-                builder = builder.flag("-mfpu=fpv4-sp-d16");
-                if !std.is_empty() {
-                    builder = builder.flag(format!("-std={}", std));
-                }
-            }
-            CompileConfig::CortexM4_HardFloat_CPP(std) => {
-                let mut builder = &mut builder;
-                builder = builder.compiler("arm-none-eabi-g++");
-                builder = builder.target("thumbv7em-none-eabihf");
-                builder = builder.flag("-mcpu=cortex-m4");
-                builder = builder.flag("-mthumb");
-                builder = builder.flag("-mfloat-abi=hard");
-                builder = builder.flag("-mfpu=fpv4-sp-d16");
-                if !std.is_empty() {
-                    builder = builder.flag(format!("-std={}", std));
-                }
-            }
-            CompileConfig::CortexM4_SoftFloat_C(std) => {
-                let mut builder = &mut builder;
-                builder = builder.compiler("arm-none-eabi-gcc");
-                builder = builder.target("thumbv7em-none-eabihf");
-                builder = builder.flag("-mcpu=cortex-m4");
-                builder = builder.flag("-mthumb");
-                builder = builder.flag("-mfloat-abi=soft");
-                if !std.is_empty() {
-                    builder = builder.flag(format!("-std={}", std));
-                }
-            }
-            CompileConfig::CortexM4_SoftFloat_CPP(std) => {
-                let mut builder = &mut builder;
-                builder = builder.compiler("arm-none-eabi-g++");
-                builder = builder.target("thumbv7em-none-eabihf");
-                builder = builder.flag("-mcpu=cortex-m4");
-                builder = builder.flag("-mthumb");
-                builder = builder.flag("-mfloat-abi=soft");
-                if !std.is_empty() {
-                    builder = builder.flag(format!("-std={}", std));
-                }
-            }
-        }
 
         // 添加定义
         for define in &self.defines {

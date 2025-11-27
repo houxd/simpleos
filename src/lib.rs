@@ -1,12 +1,12 @@
 #![no_std]
 
 pub extern crate alloc;
-use crate::driver::systick::SysTickDriver;
+use crate::driver::device::Device;
 pub use anyhow::anyhow;
 pub use anyhow::Result;
 pub use core;
 
-// pub mod bindings;
+pub mod bindings;
 pub mod console;
 pub mod driver;
 pub mod sys;
@@ -15,15 +15,19 @@ pub mod sys;
 pub mod util;
 
 pub struct SimpleOs {
-    systick: Option<&'static mut dyn SysTickDriver>,
+    device: Option<&'static dyn Device>,
 }
-singleton!(SimpleOs { systick: None });
+singleton!(SimpleOs { device: None });
 
 impl SimpleOs {
-    pub fn init(systick: &'static mut dyn SysTickDriver) {
-        SimpleOs::ref_mut().systick = Some(systick);
+    pub fn init(device: &'static impl Device) {
+        SimpleOs::ref_mut().device = Some(device);
+        device.init();
     }
-    pub fn device() -> &'static mut dyn SysTickDriver {
-        SimpleOs::ref_mut().systick.as_deref_mut().unwrap()
+    pub fn is_initialized() -> bool {
+        SimpleOs::ref_mut().device.is_some()
+    }
+    pub fn device() -> &'static dyn Device {
+        SimpleOs::ref_mut().device.as_deref().unwrap()
     }
 }
