@@ -1,5 +1,6 @@
+use crate::driver::Driver;
 
-pub trait ConsoleDriver {
+pub trait ConsoleDriver: Driver {
     fn console_getc(&mut self) -> Option<u8>;
     fn console_putc(&mut self, byte: u8) -> bool;
     fn console_flush(&mut self);

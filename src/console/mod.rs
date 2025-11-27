@@ -1,10 +1,10 @@
+mod cmd;
 mod console;
 mod console_driver;
 mod print;
-mod cmd;
 
-pub use console::*;
 pub use cmd::*;
+pub use console::*;
 pub use console_driver::*;
 
 pub use crate::print;

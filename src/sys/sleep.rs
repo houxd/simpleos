@@ -2,6 +2,8 @@ use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
+use crate::SimpleOs;
+
 pub struct SleepMsFuture {
     escape: u32,
 }
@@ -10,7 +12,7 @@ impl Future for SleepMsFuture {
     type Output = ();
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let current_tick = crate::os_interface().get_system_ms();
+        let current_tick = SimpleOs::device().get_system_ms();
         if current_tick >= self.escape {
             Poll::Ready(())
         } else {
@@ -21,15 +23,22 @@ impl Future for SleepMsFuture {
 }
 
 #[allow(unused)]
-pub fn sleep_ms(ticks: u32) -> SleepMsFuture {
+pub fn sleep_ms(ms: u32) -> SleepMsFuture {
     unsafe {
         SleepMsFuture {
-            escape: ticks + crate::os_interface().get_system_ms(),
+            escape: ms + SimpleOs::device().get_system_ms(),
         }
     }
 }
 
 #[allow(unused)]
+#[inline]
 pub fn get_system_ms() -> u32 {
-    crate::os_interface().get_system_ms()
+    SimpleOs::device().get_system_ms()
+}
+
+#[allow(unused)]
+#[inline]
+pub fn delay_ms(ms: u32) {
+    SimpleOs::device().delay_ms(ms);
 }

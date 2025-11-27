@@ -1,9 +1,12 @@
-use simpleos::OsInterface;
 use simpleos::alloc::boxed::Box;
-use simpleos::simpleos_init;
-use simpleos::sys::Executor;
+use simpleos::driver::systick::SysTickDriver;
+use simpleos::driver::Driver;
+use simpleos::SimpleOs;
+use simpleos::singleton;
 use simpleos::sys::sleep_ms;
+use simpleos::sys::Executor;
 use simpleos::util;
+use simpleos::Result;
 
 async fn task1() {
     loop {
@@ -22,12 +25,21 @@ async fn task2() {
         let data = b"Hello, world!";
         let crc = util::crc16(data);
         println!("CRC16 of {:?} is {:04X}", data, crc);
-        sub_test().await; 
+        sub_test().await;
     }
 }
 
-struct OsInterfaceEmulate;
-impl OsInterface for OsInterfaceEmulate {
+struct SysTickEmulate;
+impl Driver for SysTickEmulate {
+    fn driver_init(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    fn driver_deinit(&mut self) -> Result<()> {
+        Ok(())
+    }
+}
+impl SysTickDriver for SysTickEmulate {
     fn get_system_ms(&self) -> u32 {
         static mut BOOT_TIMESTAMP: u128 = 0;
 
@@ -44,9 +56,10 @@ impl OsInterface for OsInterfaceEmulate {
         }
     }
 }
+singleton!(SysTickEmulate {});
 
 fn main() {
-    simpleos_init(&OsInterfaceEmulate);
+    SimpleOs::init(SysTickEmulate::ref_mut());
     Executor::spawn("task1", Box::pin(task1()));
     Executor::spawn("task2", Box::pin(task2()));
     Executor::run();

@@ -1,5 +1,6 @@
 use crate::console::cmd::CmdParse;
 use crate::console::console_driver::ConsoleDriver;
+use crate::driver::Driver;
 use crate::sys::{sleep_ms, yield_now, Executor};
 use crate::util::RingBuf;
 use crate::{join, println, select, singleton};
@@ -17,6 +18,15 @@ const LINE_BUFFER_SIZE: usize = 512; // 每行最大字符数
 
 /// 控制台设备默认的空实现
 struct DummyConsole;
+impl Driver for DummyConsole {
+    fn driver_init(&mut self) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn driver_deinit(&mut self) -> anyhow::Result<()> {
+        Ok(())
+    }
+}
 impl ConsoleDriver for DummyConsole {
     fn console_getc(&mut self) -> Option<u8> {
         None
@@ -86,7 +96,7 @@ pub struct Console {
 }
 
 singleton!(Console {
-    dev: DummyConsole::mut_ref(),
+    dev: DummyConsole::ref_mut(),
     prompt: String::from("> "),
     history: HeaplessVec::new(),
     history_index: None,
@@ -105,14 +115,14 @@ async fn default_signal_handler(sig: u8) {
 
 #[allow(unused)]
 impl Console {
-    pub fn set_device(dev: &'static mut dyn ConsoleDriver) {
-        let console = Console::mut_ref();
+    pub fn init(dev: &'static mut dyn ConsoleDriver) {
+        let console = Console::ref_mut();
         console.dev = dev;
     }
 
     #[inline]
     pub fn device() -> &'static mut dyn ConsoleDriver {
-        Console::mut_ref().dev
+        Console::ref_mut().dev
     }
 
     pub fn set_prompt(&mut self, prompt: &str) {
@@ -328,11 +338,11 @@ impl Console {
                                                             let wait_signal_future = async {
                                                                 loop {
                                                                     if let Some(sig) =
-                                                                        Console::mut_ref()
+                                                                        Console::ref_mut()
                                                                             .signal_interrupt
                                                                             .pop()
                                                                     {
-                                                                        Console::mut_ref()
+                                                                        Console::ref_mut()
                                                                             .signal_handler
                                                                             .call(sig)
                                                                             .await;
@@ -449,7 +459,7 @@ impl Console {
     where
         T: core::future::Future<Output = ()> + 'static,
     {
-        Executor::spawn("console", Box::pin(Console::mut_ref()._start(on_cmd)));
+        Executor::spawn("console", Box::pin(Console::ref_mut()._start(on_cmd)));
         on_init();
         Executor::run();
     }
@@ -468,7 +478,7 @@ impl Console {
         F: Fn(u8) -> Fut + 'static,
         Fut: Future<Output = ()> + 'static,
     {
-        let console = Console::mut_ref();
+        let console = Console::ref_mut();
         console.signal_handler = SignalHandler::new(handler);
     }
 
@@ -476,17 +486,17 @@ impl Console {
     where
         F: Fn(u8) + 'static,
     {
-        let console = Console::mut_ref();
+        let console = Console::ref_mut();
         console.signal_handler = SignalHandler::from_sync(handler);
     }
 
     pub fn signal_interrupt(sig: u8) {
-        let mut console = Console::mut_ref();
+        let mut console = Console::ref_mut();
         let _ = console.signal_interrupt.push(sig);
     }
 
     pub async fn read_key_async() -> Option<Key> {
-        let console = Console::mut_ref();
+        let console = Console::ref_mut();
         let io = &mut console.dev;
         let mut escape_state = EscapeState::Normal;
         loop {

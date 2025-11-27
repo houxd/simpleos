@@ -1,6 +1,14 @@
+/// 设备表宏定义
+/// 用于生成设备的单例结构体和板级设备初始化/反初始化方法
+/// 语法:
+/// device_table!(BoardName, {
+///     Device1: DriverType1 = value1,
+///     Device2: DriverType2 = value2,
+///     ...
+/// });
 #[macro_export]
-macro_rules! device {
-    ($board_name:ident { $($device_name:ident: $driver_type:ty = $value:expr),* $(,)? }) => {
+macro_rules! device_table {
+    ($board_name:ident, { $($device_name:ident: $driver_type:ty = $value:expr),* $(,)? }) => {
         $(
             // 生成设备结构体定义
             pub struct $device_name {
@@ -14,7 +22,7 @@ macro_rules! device {
             impl $device_name {
                 #[inline]
                 pub fn dev() -> &'static mut $driver_type {
-                    &mut Self::mut_ref().dev
+                    &mut Self::ref_mut().dev
                 }
             }
         )*
@@ -38,4 +46,3 @@ macro_rules! device {
 
     };
 }
-

@@ -1,28 +1,29 @@
 #![no_std]
 
 pub extern crate alloc;
+use crate::driver::systick::SysTickDriver;
+pub use anyhow::anyhow;
+pub use anyhow::Result;
 pub use core;
 
-pub mod sys;
-pub mod driver;
-pub mod console;
 // pub mod bindings;
+pub mod console;
+pub mod driver;
+pub mod sys;
 
 #[cfg(feature = "util")]
 pub mod util;
 
-pub trait OsInterface {
-    fn get_system_ms(&self) -> u32;
+pub struct SimpleOs {
+    systick: Option<&'static mut dyn SysTickDriver>,
 }
+singleton!(SimpleOs { systick: None });
 
-static mut OS_INTERFACE: Option<&'static dyn OsInterface> = None;
-
-const fn os_interface() -> &'static dyn OsInterface {
-    unsafe { OS_INTERFACE.expect("OS interface not initialized! Call simpleos_init() first") }
-}
-
-pub fn simpleos_init(interface: &'static impl OsInterface) {
-    unsafe {
-        OS_INTERFACE = Some(interface);
+impl SimpleOs {
+    pub fn init(systick: &'static mut dyn SysTickDriver) {
+        SimpleOs::ref_mut().systick = Some(systick);
+    }
+    pub fn device() -> &'static mut dyn SysTickDriver {
+        SimpleOs::ref_mut().systick.as_deref_mut().unwrap()
     }
 }

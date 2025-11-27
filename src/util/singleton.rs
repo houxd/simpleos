@@ -3,7 +3,7 @@
 macro_rules! singleton {
     ($type:ident { $($field:ident: $value:expr),* $(,)? }) => {
         impl $type {
-            pub fn mut_ref() -> &'static mut Self {
+            pub fn ref_mut() -> &'static mut Self {
                 static mut INSTANCE: Option<$type> = None;
                 unsafe {
                     if core::ptr::addr_of_mut!(INSTANCE).as_mut().unwrap_unchecked().as_mut().is_none() {
