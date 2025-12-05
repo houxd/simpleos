@@ -22,9 +22,6 @@ singleton!(SimpleOs { device: None });
 impl SimpleOs {
     pub fn init(device: &'static dyn Device) {
         SimpleOs::ref_mut().device = Some(device);
-        // 最先初始化控制台和systick, 它们用于println和sleep
-        let _ = Self::device().default_console();
-        let _ = Self::device().default_systick();
     }
     pub fn is_initialized() -> bool {
         SimpleOs::ref_mut().device.is_some()
