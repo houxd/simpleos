@@ -127,19 +127,21 @@ impl MtdDriver for Sfud {
         Ok(())
     }
 
-    // fn block_size(&self) -> u32 {
-    //     // 这里需要获取实际的擦除块大小
-    //     4096
-    //     // unsafe {
-    //     //     let flash = bindings::sfud_get_device(0);
-    //     //     (*flash).chip.erase_gran
-    //     // }
-    // }
+    fn size(&mut self) -> u32 {
+        unsafe {
+            let flash = self.flash.as_mut().get_unchecked_mut();
+            ((*flash).chip.capacity) as u32
+        }
+    }
 
-    // fn total_size(&self) -> u32 {
-    //     unsafe {
-    //         let flash = bindings::sfud_get_device(0);
-    //         (*flash).chip.capacity
-    //     }
-    // }
+    fn erase_size(&mut self) -> u32 {
+        unsafe {
+            let flash = self.flash.as_mut().get_unchecked_mut();
+            ((*flash).chip.erase_gran) as u32
+        }
+    }
+
+    fn write_size(&mut self) -> u32 {
+        256
+    }
 }

@@ -24,12 +24,10 @@ impl LittleFs {
         lfs_cfg.prog = Some(Self::lfs_prog);
         lfs_cfg.erase = Some(Self::lfs_erase);
         lfs_cfg.sync = Some(Self::lfs_sync);
-        lfs_cfg.read_size = 256;
-        lfs_cfg.prog_size = 256;
-        // lfs_cfg.block_size = mtd.block_size();
-        // lfs_cfg.block_count = mtd.total_size() / mtd.block_size();
-        lfs_cfg.block_size = 4096;
-        lfs_cfg.block_count = (8 * 1024 * 1024) / 4096;
+        lfs_cfg.read_size = mtd.write_size(); // 256;
+        lfs_cfg.prog_size = mtd.write_size(); // 256;
+        lfs_cfg.block_size = mtd.erase_size(); // 4096;
+        lfs_cfg.block_count = mtd.size() / mtd.erase_size(); // (8 * 1024 * 1024) / 4096;
         lfs_cfg.cache_size = 256 * 8;
         lfs_cfg.lookahead_size = 128;
         lfs_cfg.block_cycles = 500;
