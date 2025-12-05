@@ -1,5 +1,7 @@
 use simpleos::alloc::boxed::Box;
-use simpleos::device_table;
+use simpleos::console::ConsoleDriver;
+use simpleos::driver::device::Device;
+use simpleos::driver::lazy_init::LazyInit;
 use simpleos::driver::systick::SysTickDriver;
 use simpleos::driver::Driver;
 use simpleos::SimpleOs;
@@ -58,25 +60,25 @@ impl SysTickDriver for SysTickEmulate {
     }
 }
 
-struct BoardEmulate;
-device_table!(BoardEmulate, {
-    SysTick0: SysTickEmulate = SysTickEmulate{},
+struct BoardEmulate {
+    systick0: LazyInit<SysTickEmulate>,
+}
+
+singleton!(BoardEmulate {
+    systick0: LazyInit::new(|| SysTickEmulate {}),
 });
-impl simpleos::driver::device::Device for BoardEmulate {
-    fn default_console(&self) -> &'static mut dyn simpleos::console::ConsoleDriver {
+
+impl Device for BoardEmulate {
+    fn default_console(&self) -> &'static mut dyn ConsoleDriver {
         unimplemented!()
     }
-    fn default_systick(&self) -> &'static mut dyn simpleos::driver::systick::SysTickDriver {
-        SysTick0::dev()
-    }
-    
-    fn init(&self) {
-        
+    fn default_systick(&self) -> &'static mut dyn SysTickDriver {
+        BoardEmulate::ref_mut().systick0.get_or_init()
     }
 }
 
 fn main() {
-    SimpleOs::init(&BoardEmulate);
+    SimpleOs::init(BoardEmulate::ref_mut());
     Executor::spawn("task1", Box::pin(task1()));
     Executor::spawn("task2", Box::pin(task2()));
     Executor::run();

@@ -1,9 +1,9 @@
-use crate::{print, println, singleton};
+use crate::{driver::Driver, print, println, singleton};
 use alloc::{boxed::Box, format, string::String, string::ToString, vec::Vec};
 use anyhow::{anyhow, Result};
 use core::any::Any;
 
-pub trait FsHandle: Any {
+pub trait FsHandle: Driver + Any {
     #[allow(unused)]
     fn as_any(&self) -> &dyn Any;
     #[allow(unused)]

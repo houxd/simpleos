@@ -3,6 +3,7 @@ use crate::{
     driver::{
         fs::{DirEntry, FileHandle, FsHandle, FsInfo, Whence},
         mtd::MtdDriver,
+        Driver,
     },
 };
 use alloc::{boxed::Box, vec::Vec};
@@ -12,6 +13,7 @@ use core::any::Any;
 pub struct LittleFs {
     lfs: lfs_t,
     lfs_cfg: lfs_config,
+    mtd: &'static mut dyn MtdDriver,
 }
 
 impl LittleFs {
@@ -32,23 +34,22 @@ impl LittleFs {
         lfs_cfg.lookahead_size = 128;
         lfs_cfg.block_cycles = 500;
 
-        let mtd_ptr = Box::leak(Box::new(mtd)) as *mut &'static mut dyn MtdDriver;
-        lfs_cfg.context = mtd_ptr as *mut core::ffi::c_void;
-
         LittleFs {
             lfs: lfs_t::default(),
             lfs_cfg,
+            mtd,
         }
     }
 }
 
-impl Drop for LittleFs {
-    fn drop(&mut self) {
-        unsafe {
-            // 释放 MTD 驱动的 Box
-            let mtd_ptr = self.lfs_cfg.context as *mut &'static mut dyn MtdDriver;
-            let _ = Box::from_raw(mtd_ptr);
-        }
+impl Driver for LittleFs {
+    fn driver_init(&mut self) -> Result<()> {
+        self.lfs_cfg.context = self as *mut _ as *mut core::ffi::c_void;
+        Ok(())
+    }
+
+    fn driver_deinit(&mut self) -> Result<()> {
+        Ok(())
     }
 }
 
@@ -61,10 +62,14 @@ extern "C" fn lfs_read(
     size: lfs_size_t,
 ) -> core::ffi::c_int {
     unsafe {
-        let mtd = &mut **((*c).context as *mut &'static mut dyn MtdDriver);
+        let littlefs_ptr = (*c).context as *mut LittleFs;
+        if littlefs_ptr.is_null() {
+            return -1;
+        }
+        let littlefs = &mut *littlefs_ptr;
         let addr = block * (*c).block_size + off;
         let buf_slice = core::slice::from_raw_parts_mut(buffer as *mut u8, size as usize);
-        match mtd.mtd_read(addr as u32, buf_slice) {
+        match littlefs.mtd.mtd_read(addr as u32, buf_slice) {
             Ok(_) => 0,
             Err(_) => -1,
         }
@@ -79,10 +84,14 @@ extern "C" fn lfs_prog(
     size: lfs_size_t,
 ) -> core::ffi::c_int {
     unsafe {
-        let mtd = &mut **((*c).context as *mut &'static mut dyn MtdDriver);
+        let littlefs_ptr = (*c).context as *mut LittleFs;
+        if littlefs_ptr.is_null() {
+            return -1;
+        }
+        let littlefs = &mut *littlefs_ptr;
         let addr = block * (*c).block_size + off;
         let buf_slice = core::slice::from_raw_parts(buffer as *const u8, size as usize);
-        match mtd.mtd_write(addr as u32, buf_slice) {
+        match littlefs.mtd.mtd_write(addr as u32, buf_slice) {
             Ok(_) => 0,
             Err(_) => -1,
         }
@@ -91,9 +100,13 @@ extern "C" fn lfs_prog(
 #[no_mangle]
 extern "C" fn lfs_erase(c: *const lfs_config, block: lfs_block_t) -> core::ffi::c_int {
     unsafe {
-        let mtd = &mut **((*c).context as *mut &'static mut dyn MtdDriver);
+        let littlefs_ptr = (*c).context as *mut LittleFs;
+        if littlefs_ptr.is_null() {
+            return -1;
+        }
+        let littlefs = &mut *littlefs_ptr;
         let addr = block * (*c).block_size;
-        match mtd.mtd_erase(addr as u32, (*c).block_size as u32) {
+        match littlefs.mtd.mtd_erase(addr as u32, (*c).block_size as u32) {
             Ok(_) => 0,
             Err(_) => -1,
         }

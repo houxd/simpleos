@@ -2,6 +2,7 @@ mod convert;
 mod crc16;
 mod ringbuf;
 mod singleton;
+mod lazy;
 
 #[allow(unused)]
 pub use ringbuf::RingBuf;
@@ -13,3 +14,5 @@ pub use crc16::crc16;
 pub use crate::singleton;
 
 pub use convert::*;
+
+pub use lazy::*;

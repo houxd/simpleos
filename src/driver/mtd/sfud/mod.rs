@@ -1,14 +1,15 @@
-use core::pin::Pin;
-use alloc::boxed::Box;
+use crate::bindings;
 use crate::console::println;
 use crate::driver::mtd::MtdDriver;
 use crate::driver::spi::SpiDriver;
 use crate::driver::Driver;
 use crate::sys::delay_ms;
-use crate::{bindings};
+use alloc::boxed::Box;
+use core::pin::Pin;
 
 pub struct Sfud {
     flash: Pin<Box<bindings::sfud_flash>>,
+    spi: &'static mut dyn SpiDriver,
 }
 
 impl Sfud {
@@ -16,31 +17,17 @@ impl Sfud {
         let mut flash = Box::pin(bindings::sfud_flash::default());
         flash.name = "default\0".as_ptr() as *mut _;
         flash.spi.name = "default\0".as_ptr() as *mut _;
-
-        // let spi_ptr = Box::leak(Box::new(spi)) as *mut &'static mut dyn SpiDriver;
-        // flash.spi.user_data = spi_ptr as *mut core::ffi::c_void;
-
-        let spi_ptr = spi as *mut dyn SpiDriver;
-        let boxed = Box::new(spi_ptr);
-        flash.spi.user_data = Box::into_raw(boxed) as *mut core::ffi::c_void;
-
-        Self { flash }
-    }
-}
-
-impl Drop for Sfud {
-    fn drop(&mut self) {
-        unsafe {
-            let ptr = self.flash.spi.user_data as *mut *mut dyn SpiDriver;
-            let _ = Box::from_raw(ptr);
-        }
+        flash.spi.user_data = core::ptr::null_mut();
+        Self { flash, spi }
     }
 }
 
 impl Driver for Sfud {
     fn driver_init(&mut self) -> anyhow::Result<()> {
         unsafe {
+            let self_ptr = self as *mut Self;
             let flash_mut = Pin::get_unchecked_mut(self.flash.as_mut());
+            flash_mut.spi.user_data = self_ptr as *mut core::ffi::c_void;
             bindings::sfud_device_init(flash_mut);
         }
         Ok(())
@@ -111,26 +98,35 @@ extern "C" fn sfud_spi_write_read(
     read_size: usize,
 ) -> bindings::sfud_err {
     unsafe {
-        // let spi = &mut **((*flash_spi).user_data as *mut &'static mut dyn SpiDriver);
-        let spi_ptr_ptr = (*flash_spi).user_data as *mut *mut dyn SpiDriver;
-        let spi = &mut **spi_ptr_ptr;
+        // 从 user_data 获取 Sfud 的裸指针
+        let sfud_ptr = (*flash_spi).user_data as *mut Sfud;
+        if sfud_ptr.is_null() {
+            return bindings::sfud_err_SFUD_ERR_NOT_FOUND;
+        }
+        let sfud = &mut *sfud_ptr;
 
-        spi.spi_cs_activate();
+        sfud.spi.spi_cs_activate();
         if write_size > 0 && !write_buf.is_null() {
-            if let Err(e) = spi.spi_write(core::slice::from_raw_parts(write_buf, write_size)) {
+            if let Err(e) = sfud
+                .spi
+                .spi_write(core::slice::from_raw_parts(write_buf, write_size))
+            {
                 println!("SFUD ERR: {:?}", e);
-                spi.spi_cs_deactivate();
+                sfud.spi.spi_cs_deactivate();
                 return bindings::sfud_err_SFUD_ERR_WRITE;
             }
         }
         if read_size > 0 && !read_buf.is_null() {
-            if let Err(e) = spi.spi_read(core::slice::from_raw_parts_mut(read_buf, read_size)) {
+            if let Err(e) = sfud
+                .spi
+                .spi_read(core::slice::from_raw_parts_mut(read_buf, read_size))
+            {
                 println!("SFUD ERR: {:?}", e);
-                spi.spi_cs_deactivate();
+                sfud.spi.spi_cs_deactivate();
                 return bindings::sfud_err_SFUD_ERR_READ;
             }
         }
-        spi.spi_cs_deactivate();
+        sfud.spi.spi_cs_deactivate();
     }
     bindings::sfud_err_SFUD_SUCCESS
 }

@@ -14,5 +14,8 @@ pub mod rtc;
 pub mod spi;
 pub mod systick;
 pub mod uart;
+pub mod lazy_init;
 
 pub use crate::device_table;
+pub use crate::device_struct;
+pub use crate::lazy_init;
