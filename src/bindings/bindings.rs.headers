@@ -1,0 +1,6 @@
+src/driver/mtd/sfud/sfud.h
+src/driver/mtd/sfud/sfud_def.h
+src/driver/mtd/sfud/sfud_cfg.h
+src/driver/mtd/sfud/sfud_flash_def.h
+src/driver/fs/littlefs/lfs_util.h
+src/driver/fs/littlefs/lfs.h
