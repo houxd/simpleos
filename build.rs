@@ -115,9 +115,10 @@ impl Binding {
         let top_dir = Path::new(makefile_path)
             .parent()
             .ok_or_else(|| anyhow::anyhow!("Failed to get parent directory of Makefile"))?;
-        let defines = Self::get_makefile_variable(makefile_path, "C_DEFS").map_err(|err| anyhow::anyhow!("Failed to get defines: {}", err))?;
-        let include_dirs =
-            Self::get_makefile_variable(makefile_path, "C_INCLUDES").map_err(|err| anyhow::anyhow!("Failed to get include dirs: {}", err))?;
+        let defines = Self::get_makefile_variable(makefile_path, "C_DEFS")
+            .map_err(|err| anyhow::anyhow!("Failed to get defines: {}", err))?;
+        let include_dirs = Self::get_makefile_variable(makefile_path, "C_INCLUDES")
+            .map_err(|err| anyhow::anyhow!("Failed to get include dirs: {}", err))?;
         let include_dirs = include_dirs
             .iter()
             .map(|dir| {
@@ -179,7 +180,9 @@ impl Binding {
             .map_err(|e| anyhow::anyhow!("Failed to read directory {}: {}", dir_path, e))
             .unwrap();
         for entry in entries {
-            let entry = entry.map_err(|e| anyhow::anyhow!("Failed to read entry in {}: {}", dir_path, e)).unwrap();
+            let entry = entry
+                .map_err(|e| anyhow::anyhow!("Failed to read entry in {}: {}", dir_path, e))
+                .unwrap();
             let path = entry.path();
             if path.is_file() {
                 if let Some(ext) = path.extension() {
@@ -199,7 +202,9 @@ impl Binding {
             .map_err(|e| anyhow::anyhow!("Failed to read directory {}: {}", dir_path, e))
             .unwrap();
         for entry in entries {
-            let entry = entry.map_err(|e| anyhow::anyhow!("Failed to read entry in {}: {}", dir_path, e)).unwrap();
+            let entry = entry
+                .map_err(|e| anyhow::anyhow!("Failed to read entry in {}: {}", dir_path, e))
+                .unwrap();
             let path = entry.path();
             if path.is_file() {
                 if let Some(ext) = path.extension() {
@@ -230,7 +235,11 @@ impl Binding {
         self
     }
 
-    pub fn add_include_dir_from_makefile(&mut self, makefile_path: &str, var_name: &str) -> &mut Self {
+    pub fn add_include_dir_from_makefile(
+        &mut self,
+        makefile_path: &str,
+        var_name: &str,
+    ) -> &mut Self {
         let include_dirs = Self::get_makefile_variable(makefile_path, var_name).unwrap_or_default();
         for include_dir in include_dirs {
             self.include_dirs.push(include_dir);
@@ -240,6 +249,11 @@ impl Binding {
 
     pub fn generate(&self, output_path: &str) -> Result<&Self> {
         println!("cargo:rerun-if-changed={}", output_path);
+
+        // 确保输出目录存在
+        if let Some(parent) = Path::new(output_path).parent() {
+            fs::create_dir_all(parent)?;
+        }
 
         // 使用 bindgen 生成绑定
         let mut builder = bindgen::Builder::default();
@@ -262,15 +276,20 @@ impl Binding {
         // 添加头文件
         builder = builder.headers(self.headers.clone());
 
-        // 将头文件列表写入临时文件
-        let header_list_path = output_path.to_string() + ".headers";
-        fs::write(&header_list_path, self.headers.join("\n")).expect("Failed to write header list file");
-        // 将包含文件列表写入到临时文件
-        let include_dir_list_path = output_path.to_string() + ".includes";
-        fs::write(&include_dir_list_path, self.include_dirs.join("\n")).expect("Failed to write include dir list file");
-        // 将预处理定义列表写入到临时文件
-        let define_list_path = output_path.to_string() + ".defines";
-        fs::write(&define_list_path, self.defines.join("\n")).expect("Failed to write define list file");
+            // 将头文件列表写入到临时文件
+    let header_list_path = output_path.to_string() + ".headers";
+    fs::write(&header_list_path, self.headers.join("\n"))
+        .map_err(|e| anyhow::anyhow!("Failed to write header list file: {}", e))?;
+    
+    // 将包含文件列表写入到临时文件
+    let include_dir_list_path = output_path.to_string() + ".includes";
+    fs::write(&include_dir_list_path, self.include_dirs.join("\n"))
+        .map_err(|e| anyhow::anyhow!("Failed to write include dir list file: {}", e))?;
+    
+    // 将预处理定义列表写入到临时文件
+    let define_list_path = output_path.to_string() + ".defines";
+    fs::write(&define_list_path, self.defines.join("\n"))
+        .map_err(|e| anyhow::anyhow!("Failed to write define list file: {}", e))?;
 
         // 配置生成选项
         let bindings = builder
@@ -289,7 +308,9 @@ impl Binding {
             .expect("Unable to generate bindings");
 
         // 写入生成的绑定
-        bindings.write_to_file(output_path).expect("Couldn't write bindings!");
+        bindings
+            .write_to_file(output_path)
+            .expect("Couldn't write bindings!");
 
         Ok(self)
     }
@@ -328,7 +349,9 @@ impl Binding {
 
     /// 获取 arm-none-eabi-gcc 的系统头文件路径
     fn get_gcc_include_paths() -> Result<Vec<String>> {
-        let output = Command::new("arm-none-eabi-gcc").args(&["-E", "-Wp,-v", "-xc", "/dev/null"]).output()?;
+        let output = Command::new("arm-none-eabi-gcc")
+            .args(&["-E", "-Wp,-v", "-xc", "/dev/null"])
+            .output()?;
 
         let stderr = String::from_utf8_lossy(&output.stderr);
         let mut paths = Vec::new();
@@ -369,7 +392,10 @@ impl Binding {
     /// let c_defs = get_makefile_variable("Makefile", "C_DEFS")?;
     /// let c_includes = get_makefile_variable("Makefile", "C_INCLUDES")?;
     /// ```
-    fn get_makefile_variable(makefile_path: &str, var_name: &str) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    fn get_makefile_variable(
+        makefile_path: &str,
+        var_name: &str,
+    ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
         let content = fs::read_to_string(makefile_path)?;
         let lines: Vec<&str> = content.lines().collect();
 
@@ -386,7 +412,9 @@ impl Binding {
             }
 
             // 检查是否是目标变量的赋值
-            if let Some((found_var, operator, initial_value)) = Self::parse_variable_assignment(line) {
+            if let Some((found_var, operator, initial_value)) =
+                Self::parse_variable_assignment(line)
+            {
                 if found_var == var_name {
                     // 处理初始值
                     if !initial_value.is_empty() {
@@ -451,7 +479,11 @@ impl Binding {
                     after_eq
                 };
 
-                return Some((var_name.to_string(), operator.to_string(), initial_value.to_string()));
+                return Some((
+                    var_name.to_string(),
+                    operator.to_string(),
+                    initial_value.to_string(),
+                ));
             }
         }
 
@@ -460,7 +492,11 @@ impl Binding {
 
     /// 从字符串中提取值（按空格分割）
     fn extract_values(content: &str, values: &mut Vec<String>) {
-        let items: Vec<String> = content.split_whitespace().filter(|s| !s.is_empty()).map(|s| s.to_string()).collect();
+        let items: Vec<String> = content
+            .split_whitespace()
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string())
+            .collect();
 
         values.extend(items);
     }
