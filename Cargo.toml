@@ -1,6 +1,6 @@
 [package]
 name = "simpleos"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 description = "A Simple OS use for MCU, that implements single-threaded asynchronous runtime."
 license = "MIT"

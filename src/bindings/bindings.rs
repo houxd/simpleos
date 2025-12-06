@@ -59,7 +59,7 @@ pub const __XSI_VISIBLE: u32 = 0;
 pub const __SSP_FORTIFY_LEVEL: u32 = 0;
 pub const __RAND_MAX: u32 = 2147483647;
 pub const __have_longlong64: u32 = 1;
-pub const __have_long64: u32 = 1;
+pub const __have_long32: u32 = 1;
 pub const ___int8_t_defined: u32 = 1;
 pub const ___int16_t_defined: u32 = 1;
 pub const ___int32_t_defined: u32 = 1;
@@ -164,13 +164,13 @@ pub const __int20: u32 = 2;
 pub const __int20__: u32 = 2;
 pub const __INT8: &[u8; 3] = b"hh\0";
 pub const __INT16: &[u8; 2] = b"h\0";
-pub const __INT64: &[u8; 2] = b"l\0";
+pub const __INT64: &[u8; 3] = b"ll\0";
 pub const __FAST8: &[u8; 3] = b"hh\0";
 pub const __FAST16: &[u8; 2] = b"h\0";
-pub const __FAST64: &[u8; 2] = b"l\0";
+pub const __FAST64: &[u8; 3] = b"ll\0";
 pub const __LEAST8: &[u8; 3] = b"hh\0";
 pub const __LEAST16: &[u8; 2] = b"h\0";
-pub const __LEAST64: &[u8; 2] = b"l\0";
+pub const __LEAST64: &[u8; 3] = b"ll\0";
 pub const LFS_VERSION: u32 = 131083;
 pub const LFS_VERSION_MAJOR: u32 = 2;
 pub const LFS_VERSION_MINOR: u32 = 11;
@@ -183,21 +183,21 @@ pub const LFS_ATTR_MAX: u32 = 1022;
 pub type int_least8_t = ::core::ffi::c_schar;
 pub type int_least16_t = ::core::ffi::c_short;
 pub type int_least32_t = ::core::ffi::c_int;
-pub type int_least64_t = ::core::ffi::c_long;
+pub type int_least64_t = ::core::ffi::c_longlong;
 pub type uint_least8_t = ::core::ffi::c_uchar;
 pub type uint_least16_t = ::core::ffi::c_ushort;
 pub type uint_least32_t = ::core::ffi::c_uint;
-pub type uint_least64_t = ::core::ffi::c_ulong;
+pub type uint_least64_t = ::core::ffi::c_ulonglong;
 pub type int_fast8_t = ::core::ffi::c_schar;
 pub type int_fast16_t = ::core::ffi::c_short;
 pub type int_fast32_t = ::core::ffi::c_int;
-pub type int_fast64_t = ::core::ffi::c_long;
+pub type int_fast64_t = ::core::ffi::c_longlong;
 pub type uint_fast8_t = ::core::ffi::c_uchar;
 pub type uint_fast16_t = ::core::ffi::c_ushort;
 pub type uint_fast32_t = ::core::ffi::c_uint;
-pub type uint_fast64_t = ::core::ffi::c_ulong;
-pub type intmax_t = ::core::ffi::c_long;
-pub type uintmax_t = ::core::ffi::c_ulong;
+pub type uint_fast64_t = ::core::ffi::c_ulonglong;
+pub type intmax_t = ::core::ffi::c_longlong;
+pub type uintmax_t = ::core::ffi::c_ulonglong;
 #[doc = "< write 1 to 256 bytes per page"]
 pub const sfud_write_mode_SFUD_WM_PAGE_256B: sfud_write_mode = 1;
 #[doc = "< byte write"]
@@ -216,10 +216,10 @@ pub struct sfud_mf {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of sfud_mf"][::core::mem::size_of::<sfud_mf>() - 16usize];
-    ["Alignment of sfud_mf"][::core::mem::align_of::<sfud_mf>() - 8usize];
+    ["Size of sfud_mf"][::core::mem::size_of::<sfud_mf>() - 8usize];
+    ["Alignment of sfud_mf"][::core::mem::align_of::<sfud_mf>() - 4usize];
     ["Offset of field: sfud_mf::name"][::core::mem::offset_of!(sfud_mf, name) - 0usize];
-    ["Offset of field: sfud_mf::id"][::core::mem::offset_of!(sfud_mf, id) - 8usize];
+    ["Offset of field: sfud_mf::id"][::core::mem::offset_of!(sfud_mf, id) - 4usize];
 };
 impl Default for sfud_mf {
     fn default() -> Self {
@@ -252,24 +252,24 @@ pub struct sfud_flash_chip {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of sfud_flash_chip"][::core::mem::size_of::<sfud_flash_chip>() - 32usize];
-    ["Alignment of sfud_flash_chip"][::core::mem::align_of::<sfud_flash_chip>() - 8usize];
+    ["Size of sfud_flash_chip"][::core::mem::size_of::<sfud_flash_chip>() - 24usize];
+    ["Alignment of sfud_flash_chip"][::core::mem::align_of::<sfud_flash_chip>() - 4usize];
     ["Offset of field: sfud_flash_chip::name"]
         [::core::mem::offset_of!(sfud_flash_chip, name) - 0usize];
     ["Offset of field: sfud_flash_chip::mf_id"]
-        [::core::mem::offset_of!(sfud_flash_chip, mf_id) - 8usize];
+        [::core::mem::offset_of!(sfud_flash_chip, mf_id) - 4usize];
     ["Offset of field: sfud_flash_chip::type_id"]
-        [::core::mem::offset_of!(sfud_flash_chip, type_id) - 9usize];
+        [::core::mem::offset_of!(sfud_flash_chip, type_id) - 5usize];
     ["Offset of field: sfud_flash_chip::capacity_id"]
-        [::core::mem::offset_of!(sfud_flash_chip, capacity_id) - 10usize];
+        [::core::mem::offset_of!(sfud_flash_chip, capacity_id) - 6usize];
     ["Offset of field: sfud_flash_chip::capacity"]
-        [::core::mem::offset_of!(sfud_flash_chip, capacity) - 12usize];
+        [::core::mem::offset_of!(sfud_flash_chip, capacity) - 8usize];
     ["Offset of field: sfud_flash_chip::write_mode"]
-        [::core::mem::offset_of!(sfud_flash_chip, write_mode) - 16usize];
+        [::core::mem::offset_of!(sfud_flash_chip, write_mode) - 12usize];
     ["Offset of field: sfud_flash_chip::erase_gran"]
-        [::core::mem::offset_of!(sfud_flash_chip, erase_gran) - 20usize];
+        [::core::mem::offset_of!(sfud_flash_chip, erase_gran) - 16usize];
     ["Offset of field: sfud_flash_chip::erase_gran_cmd"]
-        [::core::mem::offset_of!(sfud_flash_chip, erase_gran_cmd) - 24usize];
+        [::core::mem::offset_of!(sfud_flash_chip, erase_gran_cmd) - 20usize];
 };
 impl Default for sfud_flash_chip {
     fn default() -> Self {
@@ -286,41 +286,39 @@ pub type __int16_t = ::core::ffi::c_short;
 pub type __uint16_t = ::core::ffi::c_ushort;
 pub type __int32_t = ::core::ffi::c_int;
 pub type __uint32_t = ::core::ffi::c_uint;
-pub type __int64_t = ::core::ffi::c_long;
-pub type __uint64_t = ::core::ffi::c_ulong;
+pub type __int64_t = ::core::ffi::c_longlong;
+pub type __uint64_t = ::core::ffi::c_ulonglong;
 pub type __int_least8_t = ::core::ffi::c_schar;
 pub type __uint_least8_t = ::core::ffi::c_uchar;
 pub type __int_least16_t = ::core::ffi::c_short;
 pub type __uint_least16_t = ::core::ffi::c_ushort;
 pub type __int_least32_t = ::core::ffi::c_int;
 pub type __uint_least32_t = ::core::ffi::c_uint;
-pub type __int_least64_t = ::core::ffi::c_long;
-pub type __uint_least64_t = ::core::ffi::c_ulong;
-pub type __intmax_t = ::core::ffi::c_long;
-pub type __uintmax_t = ::core::ffi::c_ulong;
-pub type __intptr_t = ::core::ffi::c_long;
-pub type __uintptr_t = ::core::ffi::c_ulong;
-pub type wchar_t = ::core::ffi::c_int;
+pub type __int_least64_t = ::core::ffi::c_longlong;
+pub type __uint_least64_t = ::core::ffi::c_ulonglong;
+pub type __intmax_t = ::core::ffi::c_longlong;
+pub type __uintmax_t = ::core::ffi::c_ulonglong;
+pub type __intptr_t = ::core::ffi::c_int;
+pub type __uintptr_t = ::core::ffi::c_uint;
+pub type wchar_t = ::core::ffi::c_uint;
 #[repr(C)]
-#[repr(align(16))]
 #[derive(Debug, Default, Copy, Clone)]
 pub struct max_align_t {
     pub __max_align_ll: ::core::ffi::c_longlong,
-    pub __bindgen_padding_0: u64,
-    pub __max_align_ld: u128,
+    pub __max_align_ld: f64,
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of max_align_t"][::core::mem::size_of::<max_align_t>() - 32usize];
-    ["Alignment of max_align_t"][::core::mem::align_of::<max_align_t>() - 16usize];
+    ["Size of max_align_t"][::core::mem::size_of::<max_align_t>() - 16usize];
+    ["Alignment of max_align_t"][::core::mem::align_of::<max_align_t>() - 8usize];
     ["Offset of field: max_align_t::__max_align_ll"]
         [::core::mem::offset_of!(max_align_t, __max_align_ll) - 0usize];
     ["Offset of field: max_align_t::__max_align_ld"]
-        [::core::mem::offset_of!(max_align_t, __max_align_ld) - 16usize];
+        [::core::mem::offset_of!(max_align_t, __max_align_ld) - 8usize];
 };
-pub type __gnuc_va_list = __builtin_va_list;
+pub type __gnuc_va_list = u32;
 pub type va_list = __gnuc_va_list;
-pub type wint_t = ::core::ffi::c_uint;
+pub type wint_t = ::core::ffi::c_int;
 pub type __blkcnt_t = ::core::ffi::c_long;
 pub type __blksize_t = ::core::ffi::c_long;
 pub type __fsblkcnt_t = __uint64_t;
@@ -338,8 +336,8 @@ pub type __off_t = _off_t;
 pub type __loff_t = _off64_t;
 pub type __key_t = ::core::ffi::c_long;
 pub type _fpos_t = ::core::ffi::c_long;
-pub type __size_t = ::core::ffi::c_ulong;
-pub type _ssize_t = ::core::ffi::c_long;
+pub type __size_t = ::core::ffi::c_uint;
+pub type _ssize_t = ::core::ffi::c_int;
 pub type __ssize_t = _ssize_t;
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -391,7 +389,7 @@ impl Default for _mbstate_t {
 }
 pub type _iconv_t = *mut ::core::ffi::c_void;
 pub type __clock_t = ::core::ffi::c_ulong;
-pub type __time_t = ::core::ffi::c_long;
+pub type __time_t = __int_least64_t;
 pub type __clockid_t = ::core::ffi::c_ulong;
 pub type __daddr_t = ::core::ffi::c_long;
 pub type __timer_t = ::core::ffi::c_ulong;
@@ -401,8 +399,8 @@ pub type __nl_item = ::core::ffi::c_int;
 pub type __nlink_t = ::core::ffi::c_ushort;
 pub type __suseconds_t = ::core::ffi::c_long;
 pub type __useconds_t = ::core::ffi::c_ulong;
-pub type __va_list = __builtin_va_list;
-pub type __ULong = ::core::ffi::c_uint;
+pub type __va_list = u32;
+pub type __ULong = ::core::ffi::c_ulong;
 pub type _LOCK_T = ::core::ffi::c_int;
 pub type _LOCK_RECURSIVE_T = ::core::ffi::c_int;
 pub type _flock_t = _LOCK_RECURSIVE_T;
@@ -423,14 +421,14 @@ pub struct _Bigint {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of _Bigint"][::core::mem::size_of::<_Bigint>() - 32usize];
-    ["Alignment of _Bigint"][::core::mem::align_of::<_Bigint>() - 8usize];
+    ["Size of _Bigint"][::core::mem::size_of::<_Bigint>() - 24usize];
+    ["Alignment of _Bigint"][::core::mem::align_of::<_Bigint>() - 4usize];
     ["Offset of field: _Bigint::_next"][::core::mem::offset_of!(_Bigint, _next) - 0usize];
-    ["Offset of field: _Bigint::_k"][::core::mem::offset_of!(_Bigint, _k) - 8usize];
-    ["Offset of field: _Bigint::_maxwds"][::core::mem::offset_of!(_Bigint, _maxwds) - 12usize];
-    ["Offset of field: _Bigint::_sign"][::core::mem::offset_of!(_Bigint, _sign) - 16usize];
-    ["Offset of field: _Bigint::_wds"][::core::mem::offset_of!(_Bigint, _wds) - 20usize];
-    ["Offset of field: _Bigint::_x"][::core::mem::offset_of!(_Bigint, _x) - 24usize];
+    ["Offset of field: _Bigint::_k"][::core::mem::offset_of!(_Bigint, _k) - 4usize];
+    ["Offset of field: _Bigint::_maxwds"][::core::mem::offset_of!(_Bigint, _maxwds) - 8usize];
+    ["Offset of field: _Bigint::_sign"][::core::mem::offset_of!(_Bigint, _sign) - 12usize];
+    ["Offset of field: _Bigint::_wds"][::core::mem::offset_of!(_Bigint, _wds) - 16usize];
+    ["Offset of field: _Bigint::_x"][::core::mem::offset_of!(_Bigint, _x) - 20usize];
 };
 impl Default for _Bigint {
     fn default() -> Self {
@@ -478,16 +476,16 @@ pub struct _on_exit_args {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of _on_exit_args"][::core::mem::size_of::<_on_exit_args>() - 520usize];
-    ["Alignment of _on_exit_args"][::core::mem::align_of::<_on_exit_args>() - 8usize];
+    ["Size of _on_exit_args"][::core::mem::size_of::<_on_exit_args>() - 264usize];
+    ["Alignment of _on_exit_args"][::core::mem::align_of::<_on_exit_args>() - 4usize];
     ["Offset of field: _on_exit_args::_fnargs"]
         [::core::mem::offset_of!(_on_exit_args, _fnargs) - 0usize];
     ["Offset of field: _on_exit_args::_dso_handle"]
-        [::core::mem::offset_of!(_on_exit_args, _dso_handle) - 256usize];
+        [::core::mem::offset_of!(_on_exit_args, _dso_handle) - 128usize];
     ["Offset of field: _on_exit_args::_fntypes"]
-        [::core::mem::offset_of!(_on_exit_args, _fntypes) - 512usize];
+        [::core::mem::offset_of!(_on_exit_args, _fntypes) - 256usize];
     ["Offset of field: _on_exit_args::_is_cxa"]
-        [::core::mem::offset_of!(_on_exit_args, _is_cxa) - 516usize];
+        [::core::mem::offset_of!(_on_exit_args, _is_cxa) - 260usize];
 };
 impl Default for _on_exit_args {
     fn default() -> Self {
@@ -508,13 +506,13 @@ pub struct _atexit {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of _atexit"][::core::mem::size_of::<_atexit>() - 792usize];
-    ["Alignment of _atexit"][::core::mem::align_of::<_atexit>() - 8usize];
+    ["Size of _atexit"][::core::mem::size_of::<_atexit>() - 400usize];
+    ["Alignment of _atexit"][::core::mem::align_of::<_atexit>() - 4usize];
     ["Offset of field: _atexit::_next"][::core::mem::offset_of!(_atexit, _next) - 0usize];
-    ["Offset of field: _atexit::_ind"][::core::mem::offset_of!(_atexit, _ind) - 8usize];
-    ["Offset of field: _atexit::_fns"][::core::mem::offset_of!(_atexit, _fns) - 16usize];
+    ["Offset of field: _atexit::_ind"][::core::mem::offset_of!(_atexit, _ind) - 4usize];
+    ["Offset of field: _atexit::_fns"][::core::mem::offset_of!(_atexit, _fns) - 8usize];
     ["Offset of field: _atexit::_on_exit_args"]
-        [::core::mem::offset_of!(_atexit, _on_exit_args) - 272usize];
+        [::core::mem::offset_of!(_atexit, _on_exit_args) - 136usize];
 };
 impl Default for _atexit {
     fn default() -> Self {
@@ -533,10 +531,10 @@ pub struct __sbuf {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of __sbuf"][::core::mem::size_of::<__sbuf>() - 16usize];
-    ["Alignment of __sbuf"][::core::mem::align_of::<__sbuf>() - 8usize];
+    ["Size of __sbuf"][::core::mem::size_of::<__sbuf>() - 8usize];
+    ["Alignment of __sbuf"][::core::mem::align_of::<__sbuf>() - 4usize];
     ["Offset of field: __sbuf::_base"][::core::mem::offset_of!(__sbuf, _base) - 0usize];
-    ["Offset of field: __sbuf::_size"][::core::mem::offset_of!(__sbuf, _size) - 8usize];
+    ["Offset of field: __sbuf::_size"][::core::mem::offset_of!(__sbuf, _size) - 4usize];
 };
 impl Default for __sbuf {
     fn default() -> Self {
@@ -603,32 +601,32 @@ pub struct __sFILE {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of __sFILE"][::core::mem::size_of::<__sFILE>() - 176usize];
-    ["Alignment of __sFILE"][::core::mem::align_of::<__sFILE>() - 8usize];
+    ["Size of __sFILE"][::core::mem::size_of::<__sFILE>() - 104usize];
+    ["Alignment of __sFILE"][::core::mem::align_of::<__sFILE>() - 4usize];
     ["Offset of field: __sFILE::_p"][::core::mem::offset_of!(__sFILE, _p) - 0usize];
-    ["Offset of field: __sFILE::_r"][::core::mem::offset_of!(__sFILE, _r) - 8usize];
-    ["Offset of field: __sFILE::_w"][::core::mem::offset_of!(__sFILE, _w) - 12usize];
-    ["Offset of field: __sFILE::_flags"][::core::mem::offset_of!(__sFILE, _flags) - 16usize];
-    ["Offset of field: __sFILE::_file"][::core::mem::offset_of!(__sFILE, _file) - 18usize];
-    ["Offset of field: __sFILE::_bf"][::core::mem::offset_of!(__sFILE, _bf) - 24usize];
-    ["Offset of field: __sFILE::_lbfsize"][::core::mem::offset_of!(__sFILE, _lbfsize) - 40usize];
-    ["Offset of field: __sFILE::_cookie"][::core::mem::offset_of!(__sFILE, _cookie) - 48usize];
-    ["Offset of field: __sFILE::_read"][::core::mem::offset_of!(__sFILE, _read) - 56usize];
-    ["Offset of field: __sFILE::_write"][::core::mem::offset_of!(__sFILE, _write) - 64usize];
-    ["Offset of field: __sFILE::_seek"][::core::mem::offset_of!(__sFILE, _seek) - 72usize];
-    ["Offset of field: __sFILE::_close"][::core::mem::offset_of!(__sFILE, _close) - 80usize];
-    ["Offset of field: __sFILE::_ub"][::core::mem::offset_of!(__sFILE, _ub) - 88usize];
-    ["Offset of field: __sFILE::_up"][::core::mem::offset_of!(__sFILE, _up) - 104usize];
-    ["Offset of field: __sFILE::_ur"][::core::mem::offset_of!(__sFILE, _ur) - 112usize];
-    ["Offset of field: __sFILE::_ubuf"][::core::mem::offset_of!(__sFILE, _ubuf) - 116usize];
-    ["Offset of field: __sFILE::_nbuf"][::core::mem::offset_of!(__sFILE, _nbuf) - 119usize];
-    ["Offset of field: __sFILE::_lb"][::core::mem::offset_of!(__sFILE, _lb) - 120usize];
-    ["Offset of field: __sFILE::_blksize"][::core::mem::offset_of!(__sFILE, _blksize) - 136usize];
-    ["Offset of field: __sFILE::_offset"][::core::mem::offset_of!(__sFILE, _offset) - 144usize];
-    ["Offset of field: __sFILE::_data"][::core::mem::offset_of!(__sFILE, _data) - 152usize];
-    ["Offset of field: __sFILE::_lock"][::core::mem::offset_of!(__sFILE, _lock) - 160usize];
-    ["Offset of field: __sFILE::_mbstate"][::core::mem::offset_of!(__sFILE, _mbstate) - 164usize];
-    ["Offset of field: __sFILE::_flags2"][::core::mem::offset_of!(__sFILE, _flags2) - 172usize];
+    ["Offset of field: __sFILE::_r"][::core::mem::offset_of!(__sFILE, _r) - 4usize];
+    ["Offset of field: __sFILE::_w"][::core::mem::offset_of!(__sFILE, _w) - 8usize];
+    ["Offset of field: __sFILE::_flags"][::core::mem::offset_of!(__sFILE, _flags) - 12usize];
+    ["Offset of field: __sFILE::_file"][::core::mem::offset_of!(__sFILE, _file) - 14usize];
+    ["Offset of field: __sFILE::_bf"][::core::mem::offset_of!(__sFILE, _bf) - 16usize];
+    ["Offset of field: __sFILE::_lbfsize"][::core::mem::offset_of!(__sFILE, _lbfsize) - 24usize];
+    ["Offset of field: __sFILE::_cookie"][::core::mem::offset_of!(__sFILE, _cookie) - 28usize];
+    ["Offset of field: __sFILE::_read"][::core::mem::offset_of!(__sFILE, _read) - 32usize];
+    ["Offset of field: __sFILE::_write"][::core::mem::offset_of!(__sFILE, _write) - 36usize];
+    ["Offset of field: __sFILE::_seek"][::core::mem::offset_of!(__sFILE, _seek) - 40usize];
+    ["Offset of field: __sFILE::_close"][::core::mem::offset_of!(__sFILE, _close) - 44usize];
+    ["Offset of field: __sFILE::_ub"][::core::mem::offset_of!(__sFILE, _ub) - 48usize];
+    ["Offset of field: __sFILE::_up"][::core::mem::offset_of!(__sFILE, _up) - 56usize];
+    ["Offset of field: __sFILE::_ur"][::core::mem::offset_of!(__sFILE, _ur) - 60usize];
+    ["Offset of field: __sFILE::_ubuf"][::core::mem::offset_of!(__sFILE, _ubuf) - 64usize];
+    ["Offset of field: __sFILE::_nbuf"][::core::mem::offset_of!(__sFILE, _nbuf) - 67usize];
+    ["Offset of field: __sFILE::_lb"][::core::mem::offset_of!(__sFILE, _lb) - 68usize];
+    ["Offset of field: __sFILE::_blksize"][::core::mem::offset_of!(__sFILE, _blksize) - 76usize];
+    ["Offset of field: __sFILE::_offset"][::core::mem::offset_of!(__sFILE, _offset) - 80usize];
+    ["Offset of field: __sFILE::_data"][::core::mem::offset_of!(__sFILE, _data) - 84usize];
+    ["Offset of field: __sFILE::_lock"][::core::mem::offset_of!(__sFILE, _lock) - 88usize];
+    ["Offset of field: __sFILE::_mbstate"][::core::mem::offset_of!(__sFILE, _mbstate) - 92usize];
+    ["Offset of field: __sFILE::_flags2"][::core::mem::offset_of!(__sFILE, _flags2) - 100usize];
 };
 impl Default for __sFILE {
     fn default() -> Self {
@@ -652,11 +650,11 @@ pub struct _glue {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of _glue"][::core::mem::size_of::<_glue>() - 24usize];
-    ["Alignment of _glue"][::core::mem::align_of::<_glue>() - 8usize];
+    ["Size of _glue"][::core::mem::size_of::<_glue>() - 12usize];
+    ["Alignment of _glue"][::core::mem::align_of::<_glue>() - 4usize];
     ["Offset of field: _glue::_next"][::core::mem::offset_of!(_glue, _next) - 0usize];
-    ["Offset of field: _glue::_niobs"][::core::mem::offset_of!(_glue, _niobs) - 8usize];
-    ["Offset of field: _glue::_iobs"][::core::mem::offset_of!(_glue, _iobs) - 16usize];
+    ["Offset of field: _glue::_niobs"][::core::mem::offset_of!(_glue, _niobs) - 4usize];
+    ["Offset of field: _glue::_iobs"][::core::mem::offset_of!(_glue, _iobs) - 8usize];
 };
 impl Default for _glue {
     fn default() -> Self {
@@ -735,45 +733,45 @@ pub struct _reent__bindgen_ty_1__bindgen_ty_1 {
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
     ["Size of _reent__bindgen_ty_1__bindgen_ty_1"]
-        [::core::mem::size_of::<_reent__bindgen_ty_1__bindgen_ty_1>() - 208usize];
+        [::core::mem::size_of::<_reent__bindgen_ty_1__bindgen_ty_1>() - 200usize];
     ["Alignment of _reent__bindgen_ty_1__bindgen_ty_1"]
         [::core::mem::align_of::<_reent__bindgen_ty_1__bindgen_ty_1>() - 8usize];
     ["Offset of field: _reent__bindgen_ty_1__bindgen_ty_1::_strtok_last"]
         [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _strtok_last) - 0usize];
     ["Offset of field: _reent__bindgen_ty_1__bindgen_ty_1::_asctime_buf"]
-        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _asctime_buf) - 8usize];
+        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _asctime_buf) - 4usize];
     ["Offset of field: _reent__bindgen_ty_1__bindgen_ty_1::_localtime_buf"]
-        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _localtime_buf) - 36usize];
+        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _localtime_buf) - 32usize];
     ["Offset of field: _reent__bindgen_ty_1__bindgen_ty_1::_gamma_signgam"]
-        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _gamma_signgam) - 72usize];
+        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _gamma_signgam) - 68usize];
     ["Offset of field: _reent__bindgen_ty_1__bindgen_ty_1::_rand_next"]
-        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _rand_next) - 80usize];
+        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _rand_next) - 72usize];
     ["Offset of field: _reent__bindgen_ty_1__bindgen_ty_1::_r48"]
-        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _r48) - 88usize];
+        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _r48) - 80usize];
     ["Offset of field: _reent__bindgen_ty_1__bindgen_ty_1::_mblen_state"]
-        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _mblen_state) - 104usize];
+        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _mblen_state) - 96usize];
     ["Offset of field: _reent__bindgen_ty_1__bindgen_ty_1::_mbtowc_state"]
-        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _mbtowc_state) - 112usize];
+        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _mbtowc_state) - 104usize];
     ["Offset of field: _reent__bindgen_ty_1__bindgen_ty_1::_wctomb_state"]
-        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _wctomb_state) - 120usize];
+        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _wctomb_state) - 112usize];
     ["Offset of field: _reent__bindgen_ty_1__bindgen_ty_1::_l64a_buf"]
-        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _l64a_buf) - 128usize];
+        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _l64a_buf) - 120usize];
     ["Offset of field: _reent__bindgen_ty_1__bindgen_ty_1::_signal_buf"]
-        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _signal_buf) - 136usize];
+        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _signal_buf) - 128usize];
     ["Offset of field: _reent__bindgen_ty_1__bindgen_ty_1::_getdate_err"]
-        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _getdate_err) - 160usize];
+        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _getdate_err) - 152usize];
     ["Offset of field: _reent__bindgen_ty_1__bindgen_ty_1::_mbrlen_state"]
-        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _mbrlen_state) - 164usize];
+        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _mbrlen_state) - 156usize];
     ["Offset of field: _reent__bindgen_ty_1__bindgen_ty_1::_mbrtowc_state"]
-        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _mbrtowc_state) - 172usize];
+        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _mbrtowc_state) - 164usize];
     ["Offset of field: _reent__bindgen_ty_1__bindgen_ty_1::_mbsrtowcs_state"]
-        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _mbsrtowcs_state) - 180usize];
+        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _mbsrtowcs_state) - 172usize];
     ["Offset of field: _reent__bindgen_ty_1__bindgen_ty_1::_wcrtomb_state"]
-        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _wcrtomb_state) - 188usize];
+        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _wcrtomb_state) - 180usize];
     ["Offset of field: _reent__bindgen_ty_1__bindgen_ty_1::_wcsrtombs_state"]
-        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _wcsrtombs_state) - 196usize];
+        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _wcsrtombs_state) - 188usize];
     ["Offset of field: _reent__bindgen_ty_1__bindgen_ty_1::_h_errno"]
-        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _h_errno) - 204usize];
+        [::core::mem::offset_of!(_reent__bindgen_ty_1__bindgen_ty_1, _h_errno) - 196usize];
 };
 impl Default for _reent__bindgen_ty_1__bindgen_ty_1 {
     fn default() -> Self {
@@ -786,7 +784,7 @@ impl Default for _reent__bindgen_ty_1__bindgen_ty_1 {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of _reent__bindgen_ty_1"][::core::mem::size_of::<_reent__bindgen_ty_1>() - 208usize];
+    ["Size of _reent__bindgen_ty_1"][::core::mem::size_of::<_reent__bindgen_ty_1>() - 200usize];
     ["Alignment of _reent__bindgen_ty_1"][::core::mem::align_of::<_reent__bindgen_ty_1>() - 8usize];
     ["Offset of field: _reent__bindgen_ty_1::_reent"]
         [::core::mem::offset_of!(_reent__bindgen_ty_1, _reent) - 0usize];
@@ -802,24 +800,24 @@ impl Default for _reent__bindgen_ty_1 {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of _reent"][::core::mem::size_of::<_reent>() - 344usize];
+    ["Size of _reent"][::core::mem::size_of::<_reent>() - 288usize];
     ["Alignment of _reent"][::core::mem::align_of::<_reent>() - 8usize];
     ["Offset of field: _reent::_errno"][::core::mem::offset_of!(_reent, _errno) - 0usize];
-    ["Offset of field: _reent::_stdin"][::core::mem::offset_of!(_reent, _stdin) - 8usize];
-    ["Offset of field: _reent::_stdout"][::core::mem::offset_of!(_reent, _stdout) - 16usize];
-    ["Offset of field: _reent::_stderr"][::core::mem::offset_of!(_reent, _stderr) - 24usize];
-    ["Offset of field: _reent::_inc"][::core::mem::offset_of!(_reent, _inc) - 32usize];
-    ["Offset of field: _reent::_emergency"][::core::mem::offset_of!(_reent, _emergency) - 36usize];
-    ["Offset of field: _reent::_locale"][::core::mem::offset_of!(_reent, _locale) - 64usize];
-    ["Offset of field: _reent::__cleanup"][::core::mem::offset_of!(_reent, __cleanup) - 72usize];
-    ["Offset of field: _reent::_result"][::core::mem::offset_of!(_reent, _result) - 80usize];
-    ["Offset of field: _reent::_result_k"][::core::mem::offset_of!(_reent, _result_k) - 88usize];
-    ["Offset of field: _reent::_p5s"][::core::mem::offset_of!(_reent, _p5s) - 96usize];
-    ["Offset of field: _reent::_freelist"][::core::mem::offset_of!(_reent, _freelist) - 104usize];
-    ["Offset of field: _reent::_cvtlen"][::core::mem::offset_of!(_reent, _cvtlen) - 112usize];
-    ["Offset of field: _reent::_cvtbuf"][::core::mem::offset_of!(_reent, _cvtbuf) - 120usize];
-    ["Offset of field: _reent::_new"][::core::mem::offset_of!(_reent, _new) - 128usize];
-    ["Offset of field: _reent::_sig_func"][::core::mem::offset_of!(_reent, _sig_func) - 336usize];
+    ["Offset of field: _reent::_stdin"][::core::mem::offset_of!(_reent, _stdin) - 4usize];
+    ["Offset of field: _reent::_stdout"][::core::mem::offset_of!(_reent, _stdout) - 8usize];
+    ["Offset of field: _reent::_stderr"][::core::mem::offset_of!(_reent, _stderr) - 12usize];
+    ["Offset of field: _reent::_inc"][::core::mem::offset_of!(_reent, _inc) - 16usize];
+    ["Offset of field: _reent::_emergency"][::core::mem::offset_of!(_reent, _emergency) - 20usize];
+    ["Offset of field: _reent::_locale"][::core::mem::offset_of!(_reent, _locale) - 48usize];
+    ["Offset of field: _reent::__cleanup"][::core::mem::offset_of!(_reent, __cleanup) - 52usize];
+    ["Offset of field: _reent::_result"][::core::mem::offset_of!(_reent, _result) - 56usize];
+    ["Offset of field: _reent::_result_k"][::core::mem::offset_of!(_reent, _result_k) - 60usize];
+    ["Offset of field: _reent::_p5s"][::core::mem::offset_of!(_reent, _p5s) - 64usize];
+    ["Offset of field: _reent::_freelist"][::core::mem::offset_of!(_reent, _freelist) - 68usize];
+    ["Offset of field: _reent::_cvtlen"][::core::mem::offset_of!(_reent, _cvtlen) - 72usize];
+    ["Offset of field: _reent::_cvtbuf"][::core::mem::offset_of!(_reent, _cvtbuf) - 76usize];
+    ["Offset of field: _reent::_new"][::core::mem::offset_of!(_reent, _new) - 80usize];
+    ["Offset of field: _reent::_sig_func"][::core::mem::offset_of!(_reent, _sig_func) - 280usize];
 };
 impl Default for _reent {
     fn default() -> Self {
@@ -922,20 +920,17 @@ unsafe extern "C" {
     pub fn vfprintf(
         arg1: *mut FILE,
         arg2: *const ::core::ffi::c_char,
-        arg3: *mut __va_list_tag,
+        arg3: u32,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
-    pub fn vprintf(
-        arg1: *const ::core::ffi::c_char,
-        arg2: *mut __va_list_tag,
-    ) -> ::core::ffi::c_int;
+    pub fn vprintf(arg1: *const ::core::ffi::c_char, arg2: u32) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
     pub fn vsprintf(
         arg1: *mut ::core::ffi::c_char,
         arg2: *const ::core::ffi::c_char,
-        arg3: *mut __va_list_tag,
+        arg3: u32,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
@@ -978,18 +973,18 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn fread(
         arg1: *mut ::core::ffi::c_void,
-        _size: ::core::ffi::c_ulong,
-        _n: ::core::ffi::c_ulong,
+        _size: ::core::ffi::c_uint,
+        _n: ::core::ffi::c_uint,
         arg2: *mut FILE,
-    ) -> ::core::ffi::c_ulong;
+    ) -> ::core::ffi::c_uint;
 }
 unsafe extern "C" {
     pub fn fwrite(
         arg1: *const ::core::ffi::c_void,
-        _size: ::core::ffi::c_ulong,
-        _n: ::core::ffi::c_ulong,
+        _size: ::core::ffi::c_uint,
+        _n: ::core::ffi::c_uint,
         arg2: *mut FILE,
-    ) -> ::core::ffi::c_ulong;
+    ) -> ::core::ffi::c_uint;
 }
 unsafe extern "C" {
     pub fn fgetpos(arg1: *mut FILE, arg2: *mut fpos_t) -> ::core::ffi::c_int;
@@ -1051,7 +1046,7 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn snprintf(
         arg1: *mut ::core::ffi::c_char,
-        arg2: ::core::ffi::c_ulong,
+        arg2: ::core::ffi::c_uint,
         arg3: *const ::core::ffi::c_char,
         ...
     ) -> ::core::ffi::c_int;
@@ -1059,27 +1054,26 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn vsnprintf(
         arg1: *mut ::core::ffi::c_char,
-        arg2: ::core::ffi::c_ulong,
+        arg2: ::core::ffi::c_uint,
         arg3: *const ::core::ffi::c_char,
-        arg4: *mut __va_list_tag,
+        arg4: u32,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
     pub fn vfscanf(
         arg1: *mut FILE,
         arg2: *const ::core::ffi::c_char,
-        arg3: *mut __va_list_tag,
+        arg3: u32,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
-    pub fn vscanf(arg1: *const ::core::ffi::c_char, arg2: *mut __va_list_tag)
-    -> ::core::ffi::c_int;
+    pub fn vscanf(arg1: *const ::core::ffi::c_char, arg2: u32) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
     pub fn vsscanf(
         arg1: *const ::core::ffi::c_char,
         arg2: *const ::core::ffi::c_char,
-        arg3: *mut __va_list_tag,
+        arg3: u32,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
@@ -1150,7 +1144,7 @@ unsafe extern "C" {
     pub fn vasiprintf(
         arg1: *mut *mut ::core::ffi::c_char,
         arg2: *const ::core::ffi::c_char,
-        arg3: *mut __va_list_tag,
+        arg3: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
@@ -1158,7 +1152,7 @@ unsafe extern "C" {
         arg1: *mut ::core::ffi::c_char,
         arg2: *mut usize,
         arg3: *const ::core::ffi::c_char,
-        arg4: *mut __va_list_tag,
+        arg4: __gnuc_va_list,
     ) -> *mut ::core::ffi::c_char;
 }
 unsafe extern "C" {
@@ -1166,54 +1160,48 @@ unsafe extern "C" {
         arg1: *mut ::core::ffi::c_char,
         arg2: *mut usize,
         arg3: *const ::core::ffi::c_char,
-        arg4: *mut __va_list_tag,
+        arg4: __gnuc_va_list,
     ) -> *mut ::core::ffi::c_char;
 }
 unsafe extern "C" {
     pub fn vdiprintf(
         arg1: ::core::ffi::c_int,
         arg2: *const ::core::ffi::c_char,
-        arg3: *mut __va_list_tag,
+        arg3: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
     pub fn vfiprintf(
         arg1: *mut FILE,
         arg2: *const ::core::ffi::c_char,
-        arg3: *mut __va_list_tag,
+        arg3: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
     pub fn vfiscanf(
         arg1: *mut FILE,
         arg2: *const ::core::ffi::c_char,
-        arg3: *mut __va_list_tag,
+        arg3: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
-    pub fn viprintf(
-        arg1: *const ::core::ffi::c_char,
-        arg2: *mut __va_list_tag,
-    ) -> ::core::ffi::c_int;
+    pub fn viprintf(arg1: *const ::core::ffi::c_char, arg2: __gnuc_va_list) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
-    pub fn viscanf(
-        arg1: *const ::core::ffi::c_char,
-        arg2: *mut __va_list_tag,
-    ) -> ::core::ffi::c_int;
+    pub fn viscanf(arg1: *const ::core::ffi::c_char, arg2: __gnuc_va_list) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
     pub fn vsiprintf(
         arg1: *mut ::core::ffi::c_char,
         arg2: *const ::core::ffi::c_char,
-        arg3: *mut __va_list_tag,
+        arg3: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
     pub fn vsiscanf(
         arg1: *const ::core::ffi::c_char,
         arg2: *const ::core::ffi::c_char,
-        arg3: *mut __va_list_tag,
+        arg3: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
@@ -1221,7 +1209,7 @@ unsafe extern "C" {
         arg1: *mut ::core::ffi::c_char,
         arg2: usize,
         arg3: *const ::core::ffi::c_char,
-        arg4: *mut __va_list_tag,
+        arg4: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
@@ -1290,7 +1278,7 @@ unsafe extern "C" {
     pub fn vdprintf(
         arg1: ::core::ffi::c_int,
         arg2: *const ::core::ffi::c_char,
-        arg3: *mut __va_list_tag,
+        arg3: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
@@ -1705,7 +1693,7 @@ unsafe extern "C" {
         arg1: *mut _reent,
         arg2: *mut *mut ::core::ffi::c_char,
         arg3: *const ::core::ffi::c_char,
-        arg4: *mut __va_list_tag,
+        arg4: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
@@ -1714,7 +1702,7 @@ unsafe extern "C" {
         arg2: *mut ::core::ffi::c_char,
         arg3: *mut usize,
         arg4: *const ::core::ffi::c_char,
-        arg5: *mut __va_list_tag,
+        arg5: __gnuc_va_list,
     ) -> *mut ::core::ffi::c_char;
 }
 unsafe extern "C" {
@@ -1723,7 +1711,7 @@ unsafe extern "C" {
         arg2: *mut ::core::ffi::c_char,
         arg3: *mut usize,
         arg4: *const ::core::ffi::c_char,
-        arg5: *mut __va_list_tag,
+        arg5: __gnuc_va_list,
     ) -> *mut ::core::ffi::c_char;
 }
 unsafe extern "C" {
@@ -1731,7 +1719,7 @@ unsafe extern "C" {
         arg1: *mut _reent,
         arg2: *mut *mut ::core::ffi::c_char,
         arg3: *const ::core::ffi::c_char,
-        arg4: *mut __va_list_tag,
+        arg4: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
@@ -1739,7 +1727,7 @@ unsafe extern "C" {
         arg1: *mut _reent,
         arg2: ::core::ffi::c_int,
         arg3: *const ::core::ffi::c_char,
-        arg4: *mut __va_list_tag,
+        arg4: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
@@ -1747,7 +1735,7 @@ unsafe extern "C" {
         arg1: *mut _reent,
         arg2: ::core::ffi::c_int,
         arg3: *const ::core::ffi::c_char,
-        arg4: *mut __va_list_tag,
+        arg4: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
@@ -1755,7 +1743,7 @@ unsafe extern "C" {
         arg1: *mut _reent,
         arg2: *mut FILE,
         arg3: *const ::core::ffi::c_char,
-        arg4: *mut __va_list_tag,
+        arg4: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
@@ -1763,7 +1751,7 @@ unsafe extern "C" {
         arg1: *mut _reent,
         arg2: *mut FILE,
         arg3: *const ::core::ffi::c_char,
-        arg4: *mut __va_list_tag,
+        arg4: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
@@ -1771,7 +1759,7 @@ unsafe extern "C" {
         arg1: *mut _reent,
         arg2: *mut FILE,
         arg3: *const ::core::ffi::c_char,
-        arg4: *mut __va_list_tag,
+        arg4: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
@@ -1779,35 +1767,35 @@ unsafe extern "C" {
         arg1: *mut _reent,
         arg2: *mut FILE,
         arg3: *const ::core::ffi::c_char,
-        arg4: *mut __va_list_tag,
+        arg4: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
     pub fn _viprintf_r(
         arg1: *mut _reent,
         arg2: *const ::core::ffi::c_char,
-        arg3: *mut __va_list_tag,
+        arg3: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
     pub fn _viscanf_r(
         arg1: *mut _reent,
         arg2: *const ::core::ffi::c_char,
-        arg3: *mut __va_list_tag,
+        arg3: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
     pub fn _vprintf_r(
         arg1: *mut _reent,
         arg2: *const ::core::ffi::c_char,
-        arg3: *mut __va_list_tag,
+        arg3: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
     pub fn _vscanf_r(
         arg1: *mut _reent,
         arg2: *const ::core::ffi::c_char,
-        arg3: *mut __va_list_tag,
+        arg3: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
@@ -1815,7 +1803,7 @@ unsafe extern "C" {
         arg1: *mut _reent,
         arg2: *mut ::core::ffi::c_char,
         arg3: *const ::core::ffi::c_char,
-        arg4: *mut __va_list_tag,
+        arg4: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
@@ -1823,7 +1811,7 @@ unsafe extern "C" {
         arg1: *mut _reent,
         arg2: *const ::core::ffi::c_char,
         arg3: *const ::core::ffi::c_char,
-        arg4: *mut __va_list_tag,
+        arg4: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
@@ -1832,7 +1820,7 @@ unsafe extern "C" {
         arg2: *mut ::core::ffi::c_char,
         arg3: usize,
         arg4: *const ::core::ffi::c_char,
-        arg5: *mut __va_list_tag,
+        arg5: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
@@ -1841,7 +1829,7 @@ unsafe extern "C" {
         arg2: *mut ::core::ffi::c_char,
         arg3: usize,
         arg4: *const ::core::ffi::c_char,
-        arg5: *mut __va_list_tag,
+        arg5: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
@@ -1849,7 +1837,7 @@ unsafe extern "C" {
         arg1: *mut _reent,
         arg2: *mut ::core::ffi::c_char,
         arg3: *const ::core::ffi::c_char,
-        arg4: *mut __va_list_tag,
+        arg4: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
@@ -1857,7 +1845,7 @@ unsafe extern "C" {
         arg1: *mut _reent,
         arg2: *const ::core::ffi::c_char,
         arg3: *const ::core::ffi::c_char,
-        arg4: *mut __va_list_tag,
+        arg4: __gnuc_va_list,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
@@ -2005,10 +1993,10 @@ pub struct ldiv_t {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of ldiv_t"][::core::mem::size_of::<ldiv_t>() - 16usize];
-    ["Alignment of ldiv_t"][::core::mem::align_of::<ldiv_t>() - 8usize];
+    ["Size of ldiv_t"][::core::mem::size_of::<ldiv_t>() - 8usize];
+    ["Alignment of ldiv_t"][::core::mem::align_of::<ldiv_t>() - 4usize];
     ["Offset of field: ldiv_t::quot"][::core::mem::offset_of!(ldiv_t, quot) - 0usize];
-    ["Offset of field: ldiv_t::rem"][::core::mem::offset_of!(ldiv_t, rem) - 8usize];
+    ["Offset of field: ldiv_t::rem"][::core::mem::offset_of!(ldiv_t, rem) - 4usize];
 };
 #[repr(C)]
 #[derive(Debug, Default, Copy, Clone)]
@@ -2078,10 +2066,8 @@ unsafe extern "C" {
     ) -> *mut ::core::ffi::c_void;
 }
 unsafe extern "C" {
-    pub fn calloc(
-        arg1: ::core::ffi::c_ulong,
-        arg2: ::core::ffi::c_ulong,
-    ) -> *mut ::core::ffi::c_void;
+    pub fn calloc(arg1: ::core::ffi::c_uint, arg2: ::core::ffi::c_uint)
+    -> *mut ::core::ffi::c_void;
 }
 unsafe extern "C" {
     pub fn div(__numer: ::core::ffi::c_int, __denom: ::core::ffi::c_int) -> div_t;
@@ -2131,7 +2117,7 @@ unsafe extern "C" {
     pub fn ldiv(__numer: ::core::ffi::c_long, __denom: ::core::ffi::c_long) -> ldiv_t;
 }
 unsafe extern "C" {
-    pub fn malloc(arg1: ::core::ffi::c_ulong) -> *mut ::core::ffi::c_void;
+    pub fn malloc(arg1: ::core::ffi::c_uint) -> *mut ::core::ffi::c_void;
 }
 unsafe extern "C" {
     pub fn mblen(arg1: *const ::core::ffi::c_char, arg2: usize) -> ::core::ffi::c_int;
@@ -2257,7 +2243,7 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn realloc(
         arg1: *mut ::core::ffi::c_void,
-        arg2: ::core::ffi::c_ulong,
+        arg2: ::core::ffi::c_uint,
     ) -> *mut ::core::ffi::c_void;
 }
 unsafe extern "C" {
@@ -2608,15 +2594,15 @@ unsafe extern "C" {
         arg1: *mut _reent,
         arg2: *const ::core::ffi::c_char,
         arg3: *mut *mut ::core::ffi::c_char,
-    ) -> u128;
+    ) -> f64;
 }
 unsafe extern "C" {
-    pub fn strtold(arg1: *const ::core::ffi::c_char, arg2: *mut *mut ::core::ffi::c_char) -> u128;
+    pub fn strtold(arg1: *const ::core::ffi::c_char, arg2: *mut *mut ::core::ffi::c_char) -> f64;
 }
 unsafe extern "C" {
     pub fn aligned_alloc(
-        arg1: ::core::ffi::c_ulong,
-        arg2: ::core::ffi::c_ulong,
+        arg1: ::core::ffi::c_uint,
+        arg2: ::core::ffi::c_uint,
     ) -> *mut ::core::ffi::c_void;
 }
 unsafe extern "C" {
@@ -2753,14 +2739,14 @@ pub struct __sfud_spi {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of __sfud_spi"][::core::mem::size_of::<__sfud_spi>() - 40usize];
-    ["Alignment of __sfud_spi"][::core::mem::align_of::<__sfud_spi>() - 8usize];
+    ["Size of __sfud_spi"][::core::mem::size_of::<__sfud_spi>() - 20usize];
+    ["Alignment of __sfud_spi"][::core::mem::align_of::<__sfud_spi>() - 4usize];
     ["Offset of field: __sfud_spi::name"][::core::mem::offset_of!(__sfud_spi, name) - 0usize];
-    ["Offset of field: __sfud_spi::wr"][::core::mem::offset_of!(__sfud_spi, wr) - 8usize];
-    ["Offset of field: __sfud_spi::lock"][::core::mem::offset_of!(__sfud_spi, lock) - 16usize];
-    ["Offset of field: __sfud_spi::unlock"][::core::mem::offset_of!(__sfud_spi, unlock) - 24usize];
+    ["Offset of field: __sfud_spi::wr"][::core::mem::offset_of!(__sfud_spi, wr) - 4usize];
+    ["Offset of field: __sfud_spi::lock"][::core::mem::offset_of!(__sfud_spi, lock) - 8usize];
+    ["Offset of field: __sfud_spi::unlock"][::core::mem::offset_of!(__sfud_spi, unlock) - 12usize];
     ["Offset of field: __sfud_spi::user_data"]
-        [::core::mem::offset_of!(__sfud_spi, user_data) - 32usize];
+        [::core::mem::offset_of!(__sfud_spi, user_data) - 16usize];
 };
 impl Default for __sfud_spi {
     fn default() -> Self {
@@ -2808,30 +2794,30 @@ pub struct sfud_flash__bindgen_ty_1 {
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
     ["Size of sfud_flash__bindgen_ty_1"]
-        [::core::mem::size_of::<sfud_flash__bindgen_ty_1>() - 16usize];
+        [::core::mem::size_of::<sfud_flash__bindgen_ty_1>() - 8usize];
     ["Alignment of sfud_flash__bindgen_ty_1"]
-        [::core::mem::align_of::<sfud_flash__bindgen_ty_1>() - 8usize];
+        [::core::mem::align_of::<sfud_flash__bindgen_ty_1>() - 4usize];
     ["Offset of field: sfud_flash__bindgen_ty_1::delay"]
         [::core::mem::offset_of!(sfud_flash__bindgen_ty_1, delay) - 0usize];
     ["Offset of field: sfud_flash__bindgen_ty_1::times"]
-        [::core::mem::offset_of!(sfud_flash__bindgen_ty_1, times) - 8usize];
+        [::core::mem::offset_of!(sfud_flash__bindgen_ty_1, times) - 4usize];
 };
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of sfud_flash"][::core::mem::size_of::<sfud_flash>() - 168usize];
-    ["Alignment of sfud_flash"][::core::mem::align_of::<sfud_flash>() - 8usize];
+    ["Size of sfud_flash"][::core::mem::size_of::<sfud_flash>() - 116usize];
+    ["Alignment of sfud_flash"][::core::mem::align_of::<sfud_flash>() - 4usize];
     ["Offset of field: sfud_flash::name"][::core::mem::offset_of!(sfud_flash, name) - 0usize];
-    ["Offset of field: sfud_flash::index"][::core::mem::offset_of!(sfud_flash, index) - 8usize];
-    ["Offset of field: sfud_flash::chip"][::core::mem::offset_of!(sfud_flash, chip) - 16usize];
-    ["Offset of field: sfud_flash::spi"][::core::mem::offset_of!(sfud_flash, spi) - 48usize];
+    ["Offset of field: sfud_flash::index"][::core::mem::offset_of!(sfud_flash, index) - 4usize];
+    ["Offset of field: sfud_flash::chip"][::core::mem::offset_of!(sfud_flash, chip) - 8usize];
+    ["Offset of field: sfud_flash::spi"][::core::mem::offset_of!(sfud_flash, spi) - 32usize];
     ["Offset of field: sfud_flash::init_ok"]
-        [::core::mem::offset_of!(sfud_flash, init_ok) - 88usize];
+        [::core::mem::offset_of!(sfud_flash, init_ok) - 52usize];
     ["Offset of field: sfud_flash::addr_in_4_byte"]
-        [::core::mem::offset_of!(sfud_flash, addr_in_4_byte) - 89usize];
-    ["Offset of field: sfud_flash::retry"][::core::mem::offset_of!(sfud_flash, retry) - 96usize];
+        [::core::mem::offset_of!(sfud_flash, addr_in_4_byte) - 53usize];
+    ["Offset of field: sfud_flash::retry"][::core::mem::offset_of!(sfud_flash, retry) - 56usize];
     ["Offset of field: sfud_flash::user_data"]
-        [::core::mem::offset_of!(sfud_flash, user_data) - 112usize];
-    ["Offset of field: sfud_flash::sfdp"][::core::mem::offset_of!(sfud_flash, sfdp) - 120usize];
+        [::core::mem::offset_of!(sfud_flash, user_data) - 64usize];
+    ["Offset of field: sfud_flash::sfdp"][::core::mem::offset_of!(sfud_flash, sfdp) - 68usize];
 };
 impl Default for sfud_flash {
     fn default() -> Self {
@@ -2907,18 +2893,18 @@ unsafe extern "C" {
     pub fn bcmp(
         arg1: *const ::core::ffi::c_void,
         arg2: *const ::core::ffi::c_void,
-        arg3: ::core::ffi::c_ulong,
+        arg3: ::core::ffi::c_uint,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
     pub fn bcopy(
         arg1: *const ::core::ffi::c_void,
         arg2: *mut ::core::ffi::c_void,
-        arg3: ::core::ffi::c_ulong,
+        arg3: ::core::ffi::c_uint,
     );
 }
 unsafe extern "C" {
-    pub fn bzero(arg1: *mut ::core::ffi::c_void, arg2: ::core::ffi::c_ulong);
+    pub fn bzero(arg1: *mut ::core::ffi::c_void, arg2: ::core::ffi::c_uint);
 }
 unsafe extern "C" {
     pub fn explicit_bzero(arg1: *mut ::core::ffi::c_void, arg2: usize);
@@ -2963,7 +2949,7 @@ unsafe extern "C" {
     pub fn strncasecmp(
         arg1: *const ::core::ffi::c_char,
         arg2: *const ::core::ffi::c_char,
-        arg3: ::core::ffi::c_ulong,
+        arg3: ::core::ffi::c_uint,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
@@ -2985,35 +2971,35 @@ unsafe extern "C" {
     pub fn memchr(
         arg1: *const ::core::ffi::c_void,
         arg2: ::core::ffi::c_int,
-        arg3: ::core::ffi::c_ulong,
+        arg3: ::core::ffi::c_uint,
     ) -> *mut ::core::ffi::c_void;
 }
 unsafe extern "C" {
     pub fn memcmp(
         arg1: *const ::core::ffi::c_void,
         arg2: *const ::core::ffi::c_void,
-        arg3: ::core::ffi::c_ulong,
+        arg3: ::core::ffi::c_uint,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
     pub fn memcpy(
         arg1: *mut ::core::ffi::c_void,
         arg2: *const ::core::ffi::c_void,
-        arg3: ::core::ffi::c_ulong,
+        arg3: ::core::ffi::c_uint,
     ) -> *mut ::core::ffi::c_void;
 }
 unsafe extern "C" {
     pub fn memmove(
         arg1: *mut ::core::ffi::c_void,
         arg2: *const ::core::ffi::c_void,
-        arg3: ::core::ffi::c_ulong,
+        arg3: ::core::ffi::c_uint,
     ) -> *mut ::core::ffi::c_void;
 }
 unsafe extern "C" {
     pub fn memset(
         arg1: *mut ::core::ffi::c_void,
         arg2: ::core::ffi::c_int,
-        arg3: ::core::ffi::c_ulong,
+        arg3: ::core::ffi::c_uint,
     ) -> *mut ::core::ffi::c_void;
 }
 unsafe extern "C" {
@@ -3050,33 +3036,33 @@ unsafe extern "C" {
     pub fn strcspn(
         arg1: *const ::core::ffi::c_char,
         arg2: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_ulong;
+    ) -> ::core::ffi::c_uint;
 }
 unsafe extern "C" {
     pub fn strerror(arg1: ::core::ffi::c_int) -> *mut ::core::ffi::c_char;
 }
 unsafe extern "C" {
-    pub fn strlen(arg1: *const ::core::ffi::c_char) -> ::core::ffi::c_ulong;
+    pub fn strlen(arg1: *const ::core::ffi::c_char) -> ::core::ffi::c_uint;
 }
 unsafe extern "C" {
     pub fn strncat(
         arg1: *mut ::core::ffi::c_char,
         arg2: *const ::core::ffi::c_char,
-        arg3: ::core::ffi::c_ulong,
+        arg3: ::core::ffi::c_uint,
     ) -> *mut ::core::ffi::c_char;
 }
 unsafe extern "C" {
     pub fn strncmp(
         arg1: *const ::core::ffi::c_char,
         arg2: *const ::core::ffi::c_char,
-        arg3: ::core::ffi::c_ulong,
+        arg3: ::core::ffi::c_uint,
     ) -> ::core::ffi::c_int;
 }
 unsafe extern "C" {
     pub fn strncpy(
         arg1: *mut ::core::ffi::c_char,
         arg2: *const ::core::ffi::c_char,
-        arg3: ::core::ffi::c_ulong,
+        arg3: ::core::ffi::c_uint,
     ) -> *mut ::core::ffi::c_char;
 }
 unsafe extern "C" {
@@ -3095,7 +3081,7 @@ unsafe extern "C" {
     pub fn strspn(
         arg1: *const ::core::ffi::c_char,
         arg2: *const ::core::ffi::c_char,
-    ) -> ::core::ffi::c_ulong;
+    ) -> ::core::ffi::c_uint;
 }
 unsafe extern "C" {
     pub fn strstr(
@@ -3113,8 +3099,8 @@ unsafe extern "C" {
     pub fn strxfrm(
         arg1: *mut ::core::ffi::c_char,
         arg2: *const ::core::ffi::c_char,
-        arg3: ::core::ffi::c_ulong,
-    ) -> ::core::ffi::c_ulong;
+        arg3: ::core::ffi::c_uint,
+    ) -> ::core::ffi::c_uint;
 }
 unsafe extern "C" {
     pub fn strcoll_l(
@@ -3160,7 +3146,7 @@ unsafe extern "C" {
         arg1: *mut ::core::ffi::c_void,
         arg2: *const ::core::ffi::c_void,
         arg3: ::core::ffi::c_int,
-        arg4: ::core::ffi::c_ulong,
+        arg4: ::core::ffi::c_uint,
     ) -> *mut ::core::ffi::c_void;
 }
 unsafe extern "C" {
@@ -3173,7 +3159,7 @@ unsafe extern "C" {
     pub fn stpncpy(
         arg1: *mut ::core::ffi::c_char,
         arg2: *const ::core::ffi::c_char,
-        arg3: ::core::ffi::c_ulong,
+        arg3: ::core::ffi::c_uint,
     ) -> *mut ::core::ffi::c_char;
 }
 unsafe extern "C" {
@@ -3188,7 +3174,7 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn strndup(
         arg1: *const ::core::ffi::c_char,
-        arg2: ::core::ffi::c_ulong,
+        arg2: ::core::ffi::c_uint,
     ) -> *mut ::core::ffi::c_char;
 }
 unsafe extern "C" {
@@ -3492,45 +3478,45 @@ pub struct lfs_config {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of lfs_config"][::core::mem::size_of::<lfs_config>() - 120usize];
-    ["Alignment of lfs_config"][::core::mem::align_of::<lfs_config>() - 8usize];
+    ["Size of lfs_config"][::core::mem::size_of::<lfs_config>() - 84usize];
+    ["Alignment of lfs_config"][::core::mem::align_of::<lfs_config>() - 4usize];
     ["Offset of field: lfs_config::context"][::core::mem::offset_of!(lfs_config, context) - 0usize];
-    ["Offset of field: lfs_config::read"][::core::mem::offset_of!(lfs_config, read) - 8usize];
-    ["Offset of field: lfs_config::prog"][::core::mem::offset_of!(lfs_config, prog) - 16usize];
-    ["Offset of field: lfs_config::erase"][::core::mem::offset_of!(lfs_config, erase) - 24usize];
-    ["Offset of field: lfs_config::sync"][::core::mem::offset_of!(lfs_config, sync) - 32usize];
+    ["Offset of field: lfs_config::read"][::core::mem::offset_of!(lfs_config, read) - 4usize];
+    ["Offset of field: lfs_config::prog"][::core::mem::offset_of!(lfs_config, prog) - 8usize];
+    ["Offset of field: lfs_config::erase"][::core::mem::offset_of!(lfs_config, erase) - 12usize];
+    ["Offset of field: lfs_config::sync"][::core::mem::offset_of!(lfs_config, sync) - 16usize];
     ["Offset of field: lfs_config::read_size"]
-        [::core::mem::offset_of!(lfs_config, read_size) - 40usize];
+        [::core::mem::offset_of!(lfs_config, read_size) - 20usize];
     ["Offset of field: lfs_config::prog_size"]
-        [::core::mem::offset_of!(lfs_config, prog_size) - 44usize];
+        [::core::mem::offset_of!(lfs_config, prog_size) - 24usize];
     ["Offset of field: lfs_config::block_size"]
-        [::core::mem::offset_of!(lfs_config, block_size) - 48usize];
+        [::core::mem::offset_of!(lfs_config, block_size) - 28usize];
     ["Offset of field: lfs_config::block_count"]
-        [::core::mem::offset_of!(lfs_config, block_count) - 52usize];
+        [::core::mem::offset_of!(lfs_config, block_count) - 32usize];
     ["Offset of field: lfs_config::block_cycles"]
-        [::core::mem::offset_of!(lfs_config, block_cycles) - 56usize];
+        [::core::mem::offset_of!(lfs_config, block_cycles) - 36usize];
     ["Offset of field: lfs_config::cache_size"]
-        [::core::mem::offset_of!(lfs_config, cache_size) - 60usize];
+        [::core::mem::offset_of!(lfs_config, cache_size) - 40usize];
     ["Offset of field: lfs_config::lookahead_size"]
-        [::core::mem::offset_of!(lfs_config, lookahead_size) - 64usize];
+        [::core::mem::offset_of!(lfs_config, lookahead_size) - 44usize];
     ["Offset of field: lfs_config::compact_thresh"]
-        [::core::mem::offset_of!(lfs_config, compact_thresh) - 68usize];
+        [::core::mem::offset_of!(lfs_config, compact_thresh) - 48usize];
     ["Offset of field: lfs_config::read_buffer"]
-        [::core::mem::offset_of!(lfs_config, read_buffer) - 72usize];
+        [::core::mem::offset_of!(lfs_config, read_buffer) - 52usize];
     ["Offset of field: lfs_config::prog_buffer"]
-        [::core::mem::offset_of!(lfs_config, prog_buffer) - 80usize];
+        [::core::mem::offset_of!(lfs_config, prog_buffer) - 56usize];
     ["Offset of field: lfs_config::lookahead_buffer"]
-        [::core::mem::offset_of!(lfs_config, lookahead_buffer) - 88usize];
+        [::core::mem::offset_of!(lfs_config, lookahead_buffer) - 60usize];
     ["Offset of field: lfs_config::name_max"]
-        [::core::mem::offset_of!(lfs_config, name_max) - 96usize];
+        [::core::mem::offset_of!(lfs_config, name_max) - 64usize];
     ["Offset of field: lfs_config::file_max"]
-        [::core::mem::offset_of!(lfs_config, file_max) - 100usize];
+        [::core::mem::offset_of!(lfs_config, file_max) - 68usize];
     ["Offset of field: lfs_config::attr_max"]
-        [::core::mem::offset_of!(lfs_config, attr_max) - 104usize];
+        [::core::mem::offset_of!(lfs_config, attr_max) - 72usize];
     ["Offset of field: lfs_config::metadata_max"]
-        [::core::mem::offset_of!(lfs_config, metadata_max) - 108usize];
+        [::core::mem::offset_of!(lfs_config, metadata_max) - 76usize];
     ["Offset of field: lfs_config::inline_max"]
-        [::core::mem::offset_of!(lfs_config, inline_max) - 112usize];
+        [::core::mem::offset_of!(lfs_config, inline_max) - 80usize];
 };
 impl Default for lfs_config {
     fn default() -> Self {
@@ -3601,11 +3587,11 @@ pub struct lfs_attr {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of lfs_attr"][::core::mem::size_of::<lfs_attr>() - 24usize];
-    ["Alignment of lfs_attr"][::core::mem::align_of::<lfs_attr>() - 8usize];
+    ["Size of lfs_attr"][::core::mem::size_of::<lfs_attr>() - 12usize];
+    ["Alignment of lfs_attr"][::core::mem::align_of::<lfs_attr>() - 4usize];
     ["Offset of field: lfs_attr::type_"][::core::mem::offset_of!(lfs_attr, type_) - 0usize];
-    ["Offset of field: lfs_attr::buffer"][::core::mem::offset_of!(lfs_attr, buffer) - 8usize];
-    ["Offset of field: lfs_attr::size"][::core::mem::offset_of!(lfs_attr, size) - 16usize];
+    ["Offset of field: lfs_attr::buffer"][::core::mem::offset_of!(lfs_attr, buffer) - 4usize];
+    ["Offset of field: lfs_attr::size"][::core::mem::offset_of!(lfs_attr, size) - 8usize];
 };
 impl Default for lfs_attr {
     fn default() -> Self {
@@ -3625,14 +3611,14 @@ pub struct lfs_file_config {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of lfs_file_config"][::core::mem::size_of::<lfs_file_config>() - 24usize];
-    ["Alignment of lfs_file_config"][::core::mem::align_of::<lfs_file_config>() - 8usize];
+    ["Size of lfs_file_config"][::core::mem::size_of::<lfs_file_config>() - 12usize];
+    ["Alignment of lfs_file_config"][::core::mem::align_of::<lfs_file_config>() - 4usize];
     ["Offset of field: lfs_file_config::buffer"]
         [::core::mem::offset_of!(lfs_file_config, buffer) - 0usize];
     ["Offset of field: lfs_file_config::attrs"]
-        [::core::mem::offset_of!(lfs_file_config, attrs) - 8usize];
+        [::core::mem::offset_of!(lfs_file_config, attrs) - 4usize];
     ["Offset of field: lfs_file_config::attr_count"]
-        [::core::mem::offset_of!(lfs_file_config, attr_count) - 16usize];
+        [::core::mem::offset_of!(lfs_file_config, attr_count) - 8usize];
 };
 impl Default for lfs_file_config {
     fn default() -> Self {
@@ -3654,12 +3640,12 @@ pub struct lfs_cache {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of lfs_cache"][::core::mem::size_of::<lfs_cache>() - 24usize];
-    ["Alignment of lfs_cache"][::core::mem::align_of::<lfs_cache>() - 8usize];
+    ["Size of lfs_cache"][::core::mem::size_of::<lfs_cache>() - 16usize];
+    ["Alignment of lfs_cache"][::core::mem::align_of::<lfs_cache>() - 4usize];
     ["Offset of field: lfs_cache::block"][::core::mem::offset_of!(lfs_cache, block) - 0usize];
     ["Offset of field: lfs_cache::off"][::core::mem::offset_of!(lfs_cache, off) - 4usize];
     ["Offset of field: lfs_cache::size"][::core::mem::offset_of!(lfs_cache, size) - 8usize];
-    ["Offset of field: lfs_cache::buffer"][::core::mem::offset_of!(lfs_cache, buffer) - 16usize];
+    ["Offset of field: lfs_cache::buffer"][::core::mem::offset_of!(lfs_cache, buffer) - 12usize];
 };
 impl Default for lfs_cache {
     fn default() -> Self {
@@ -3710,14 +3696,14 @@ pub struct lfs_dir {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of lfs_dir"][::core::mem::size_of::<lfs_dir>() - 56usize];
-    ["Alignment of lfs_dir"][::core::mem::align_of::<lfs_dir>() - 8usize];
+    ["Size of lfs_dir"][::core::mem::size_of::<lfs_dir>() - 52usize];
+    ["Alignment of lfs_dir"][::core::mem::align_of::<lfs_dir>() - 4usize];
     ["Offset of field: lfs_dir::next"][::core::mem::offset_of!(lfs_dir, next) - 0usize];
-    ["Offset of field: lfs_dir::id"][::core::mem::offset_of!(lfs_dir, id) - 8usize];
-    ["Offset of field: lfs_dir::type_"][::core::mem::offset_of!(lfs_dir, type_) - 10usize];
-    ["Offset of field: lfs_dir::m"][::core::mem::offset_of!(lfs_dir, m) - 12usize];
-    ["Offset of field: lfs_dir::pos"][::core::mem::offset_of!(lfs_dir, pos) - 44usize];
-    ["Offset of field: lfs_dir::head"][::core::mem::offset_of!(lfs_dir, head) - 48usize];
+    ["Offset of field: lfs_dir::id"][::core::mem::offset_of!(lfs_dir, id) - 4usize];
+    ["Offset of field: lfs_dir::type_"][::core::mem::offset_of!(lfs_dir, type_) - 6usize];
+    ["Offset of field: lfs_dir::m"][::core::mem::offset_of!(lfs_dir, m) - 8usize];
+    ["Offset of field: lfs_dir::pos"][::core::mem::offset_of!(lfs_dir, pos) - 40usize];
+    ["Offset of field: lfs_dir::head"][::core::mem::offset_of!(lfs_dir, head) - 44usize];
 };
 impl Default for lfs_dir {
     fn default() -> Self {
@@ -3761,19 +3747,19 @@ const _: () = {
 };
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of lfs_file"][::core::mem::size_of::<lfs_file>() - 104usize];
-    ["Alignment of lfs_file"][::core::mem::align_of::<lfs_file>() - 8usize];
+    ["Size of lfs_file"][::core::mem::size_of::<lfs_file>() - 84usize];
+    ["Alignment of lfs_file"][::core::mem::align_of::<lfs_file>() - 4usize];
     ["Offset of field: lfs_file::next"][::core::mem::offset_of!(lfs_file, next) - 0usize];
-    ["Offset of field: lfs_file::id"][::core::mem::offset_of!(lfs_file, id) - 8usize];
-    ["Offset of field: lfs_file::type_"][::core::mem::offset_of!(lfs_file, type_) - 10usize];
-    ["Offset of field: lfs_file::m"][::core::mem::offset_of!(lfs_file, m) - 12usize];
-    ["Offset of field: lfs_file::ctz"][::core::mem::offset_of!(lfs_file, ctz) - 44usize];
-    ["Offset of field: lfs_file::flags"][::core::mem::offset_of!(lfs_file, flags) - 52usize];
-    ["Offset of field: lfs_file::pos"][::core::mem::offset_of!(lfs_file, pos) - 56usize];
-    ["Offset of field: lfs_file::block"][::core::mem::offset_of!(lfs_file, block) - 60usize];
-    ["Offset of field: lfs_file::off"][::core::mem::offset_of!(lfs_file, off) - 64usize];
-    ["Offset of field: lfs_file::cache"][::core::mem::offset_of!(lfs_file, cache) - 72usize];
-    ["Offset of field: lfs_file::cfg"][::core::mem::offset_of!(lfs_file, cfg) - 96usize];
+    ["Offset of field: lfs_file::id"][::core::mem::offset_of!(lfs_file, id) - 4usize];
+    ["Offset of field: lfs_file::type_"][::core::mem::offset_of!(lfs_file, type_) - 6usize];
+    ["Offset of field: lfs_file::m"][::core::mem::offset_of!(lfs_file, m) - 8usize];
+    ["Offset of field: lfs_file::ctz"][::core::mem::offset_of!(lfs_file, ctz) - 40usize];
+    ["Offset of field: lfs_file::flags"][::core::mem::offset_of!(lfs_file, flags) - 48usize];
+    ["Offset of field: lfs_file::pos"][::core::mem::offset_of!(lfs_file, pos) - 52usize];
+    ["Offset of field: lfs_file::block"][::core::mem::offset_of!(lfs_file, block) - 56usize];
+    ["Offset of field: lfs_file::off"][::core::mem::offset_of!(lfs_file, off) - 60usize];
+    ["Offset of field: lfs_file::cache"][::core::mem::offset_of!(lfs_file, cache) - 64usize];
+    ["Offset of field: lfs_file::cfg"][::core::mem::offset_of!(lfs_file, cfg) - 80usize];
 };
 impl Default for lfs_file {
     fn default() -> Self {
@@ -3856,13 +3842,13 @@ pub struct lfs_lfs_mlist {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of lfs_lfs_mlist"][::core::mem::size_of::<lfs_lfs_mlist>() - 48usize];
-    ["Alignment of lfs_lfs_mlist"][::core::mem::align_of::<lfs_lfs_mlist>() - 8usize];
+    ["Size of lfs_lfs_mlist"][::core::mem::size_of::<lfs_lfs_mlist>() - 40usize];
+    ["Alignment of lfs_lfs_mlist"][::core::mem::align_of::<lfs_lfs_mlist>() - 4usize];
     ["Offset of field: lfs_lfs_mlist::next"][::core::mem::offset_of!(lfs_lfs_mlist, next) - 0usize];
-    ["Offset of field: lfs_lfs_mlist::id"][::core::mem::offset_of!(lfs_lfs_mlist, id) - 8usize];
+    ["Offset of field: lfs_lfs_mlist::id"][::core::mem::offset_of!(lfs_lfs_mlist, id) - 4usize];
     ["Offset of field: lfs_lfs_mlist::type_"]
-        [::core::mem::offset_of!(lfs_lfs_mlist, type_) - 10usize];
-    ["Offset of field: lfs_lfs_mlist::m"][::core::mem::offset_of!(lfs_lfs_mlist, m) - 12usize];
+        [::core::mem::offset_of!(lfs_lfs_mlist, type_) - 6usize];
+    ["Offset of field: lfs_lfs_mlist::m"][::core::mem::offset_of!(lfs_lfs_mlist, m) - 8usize];
 };
 impl Default for lfs_lfs_mlist {
     fn default() -> Self {
@@ -3884,8 +3870,8 @@ pub struct lfs_lfs_lookahead {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of lfs_lfs_lookahead"][::core::mem::size_of::<lfs_lfs_lookahead>() - 24usize];
-    ["Alignment of lfs_lfs_lookahead"][::core::mem::align_of::<lfs_lfs_lookahead>() - 8usize];
+    ["Size of lfs_lfs_lookahead"][::core::mem::size_of::<lfs_lfs_lookahead>() - 20usize];
+    ["Alignment of lfs_lfs_lookahead"][::core::mem::align_of::<lfs_lfs_lookahead>() - 4usize];
     ["Offset of field: lfs_lfs_lookahead::start"]
         [::core::mem::offset_of!(lfs_lfs_lookahead, start) - 0usize];
     ["Offset of field: lfs_lfs_lookahead::size"]
@@ -3908,23 +3894,23 @@ impl Default for lfs_lfs_lookahead {
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
-    ["Size of lfs"][::core::mem::size_of::<lfs>() - 160usize];
-    ["Alignment of lfs"][::core::mem::align_of::<lfs>() - 8usize];
+    ["Size of lfs"][::core::mem::size_of::<lfs>() - 128usize];
+    ["Alignment of lfs"][::core::mem::align_of::<lfs>() - 4usize];
     ["Offset of field: lfs::rcache"][::core::mem::offset_of!(lfs, rcache) - 0usize];
-    ["Offset of field: lfs::pcache"][::core::mem::offset_of!(lfs, pcache) - 24usize];
-    ["Offset of field: lfs::root"][::core::mem::offset_of!(lfs, root) - 48usize];
-    ["Offset of field: lfs::mlist"][::core::mem::offset_of!(lfs, mlist) - 56usize];
-    ["Offset of field: lfs::seed"][::core::mem::offset_of!(lfs, seed) - 64usize];
-    ["Offset of field: lfs::gstate"][::core::mem::offset_of!(lfs, gstate) - 68usize];
-    ["Offset of field: lfs::gdisk"][::core::mem::offset_of!(lfs, gdisk) - 80usize];
-    ["Offset of field: lfs::gdelta"][::core::mem::offset_of!(lfs, gdelta) - 92usize];
-    ["Offset of field: lfs::lookahead"][::core::mem::offset_of!(lfs, lookahead) - 104usize];
-    ["Offset of field: lfs::cfg"][::core::mem::offset_of!(lfs, cfg) - 128usize];
-    ["Offset of field: lfs::block_count"][::core::mem::offset_of!(lfs, block_count) - 136usize];
-    ["Offset of field: lfs::name_max"][::core::mem::offset_of!(lfs, name_max) - 140usize];
-    ["Offset of field: lfs::file_max"][::core::mem::offset_of!(lfs, file_max) - 144usize];
-    ["Offset of field: lfs::attr_max"][::core::mem::offset_of!(lfs, attr_max) - 148usize];
-    ["Offset of field: lfs::inline_max"][::core::mem::offset_of!(lfs, inline_max) - 152usize];
+    ["Offset of field: lfs::pcache"][::core::mem::offset_of!(lfs, pcache) - 16usize];
+    ["Offset of field: lfs::root"][::core::mem::offset_of!(lfs, root) - 32usize];
+    ["Offset of field: lfs::mlist"][::core::mem::offset_of!(lfs, mlist) - 40usize];
+    ["Offset of field: lfs::seed"][::core::mem::offset_of!(lfs, seed) - 44usize];
+    ["Offset of field: lfs::gstate"][::core::mem::offset_of!(lfs, gstate) - 48usize];
+    ["Offset of field: lfs::gdisk"][::core::mem::offset_of!(lfs, gdisk) - 60usize];
+    ["Offset of field: lfs::gdelta"][::core::mem::offset_of!(lfs, gdelta) - 72usize];
+    ["Offset of field: lfs::lookahead"][::core::mem::offset_of!(lfs, lookahead) - 84usize];
+    ["Offset of field: lfs::cfg"][::core::mem::offset_of!(lfs, cfg) - 104usize];
+    ["Offset of field: lfs::block_count"][::core::mem::offset_of!(lfs, block_count) - 108usize];
+    ["Offset of field: lfs::name_max"][::core::mem::offset_of!(lfs, name_max) - 112usize];
+    ["Offset of field: lfs::file_max"][::core::mem::offset_of!(lfs, file_max) - 116usize];
+    ["Offset of field: lfs::attr_max"][::core::mem::offset_of!(lfs, attr_max) - 120usize];
+    ["Offset of field: lfs::inline_max"][::core::mem::offset_of!(lfs, inline_max) - 124usize];
 };
 impl Default for lfs {
     fn default() -> Self {
@@ -4107,35 +4093,4 @@ unsafe extern "C" {
 }
 unsafe extern "C" {
     pub fn lfs_fs_grow(lfs: *mut lfs_t, block_count: lfs_size_t) -> ::core::ffi::c_int;
-}
-pub type __builtin_va_list = [__va_list_tag; 1usize];
-#[repr(C)]
-#[derive(Debug, Copy, Clone)]
-pub struct __va_list_tag {
-    pub gp_offset: ::core::ffi::c_uint,
-    pub fp_offset: ::core::ffi::c_uint,
-    pub overflow_arg_area: *mut ::core::ffi::c_void,
-    pub reg_save_area: *mut ::core::ffi::c_void,
-}
-#[allow(clippy::unnecessary_operation, clippy::identity_op)]
-const _: () = {
-    ["Size of __va_list_tag"][::core::mem::size_of::<__va_list_tag>() - 24usize];
-    ["Alignment of __va_list_tag"][::core::mem::align_of::<__va_list_tag>() - 8usize];
-    ["Offset of field: __va_list_tag::gp_offset"]
-        [::core::mem::offset_of!(__va_list_tag, gp_offset) - 0usize];
-    ["Offset of field: __va_list_tag::fp_offset"]
-        [::core::mem::offset_of!(__va_list_tag, fp_offset) - 4usize];
-    ["Offset of field: __va_list_tag::overflow_arg_area"]
-        [::core::mem::offset_of!(__va_list_tag, overflow_arg_area) - 8usize];
-    ["Offset of field: __va_list_tag::reg_save_area"]
-        [::core::mem::offset_of!(__va_list_tag, reg_save_area) - 16usize];
-};
-impl Default for __va_list_tag {
-    fn default() -> Self {
-        let mut s = ::core::mem::MaybeUninit::<Self>::uninit();
-        unsafe {
-            ::core::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
-            s.assume_init()
-        }
-    }
 }

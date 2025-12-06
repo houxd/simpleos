@@ -1,4 +1,4 @@
-use anyhow::Result;
+use crate::Result;
 
 pub trait Driver {
     fn driver_init(&mut self) -> Result<()>;

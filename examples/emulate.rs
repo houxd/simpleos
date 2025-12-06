@@ -73,12 +73,12 @@ impl Device for BoardEmulate {
         unimplemented!()
     }
     fn default_systick(&self) -> &'static mut dyn SysTickDriver {
-        BoardEmulate::ref_mut().systick0.get_or_init()
+        BoardEmulate::get_mut().systick0.get_or_init()
     }
 }
 
 fn main() {
-    SimpleOs::init(BoardEmulate::ref_mut());
+    SimpleOs::init(BoardEmulate::get_mut());
     Executor::spawn("task1", Box::pin(task1()));
     Executor::spawn("task2", Box::pin(task2()));
     Executor::run();

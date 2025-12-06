@@ -77,7 +77,7 @@ impl File {
         if self.closed {
             return Ok(());
         }
-        let fs = &mut Fs::ref_mut().fstab[self.fs_index].fs;
+        let fs = &mut Fs::get_mut().fstab[self.fs_index].fs;
         fs.close(&mut self.node)?;
         self.closed = true;
         Ok(())
@@ -86,21 +86,21 @@ impl File {
         if self.closed {
             return Err(anyhow!("File is already closed"));
         }
-        let fs = &mut Fs::ref_mut().fstab[self.fs_index].fs;
+        let fs = &mut Fs::get_mut().fstab[self.fs_index].fs;
         fs.flush(&mut self.node)
     }
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         if self.closed {
             return Err(anyhow!("File is already closed"));
         }
-        let fs = &mut Fs::ref_mut().fstab[self.fs_index].fs;
+        let fs = &mut Fs::get_mut().fstab[self.fs_index].fs;
         fs.read(&mut self.node, buf)
     }
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
         if self.closed {
             return Err(anyhow!("File is already closed"));
         }
-        let fs = &mut Fs::ref_mut().fstab[self.fs_index].fs;
+        let fs = &mut Fs::get_mut().fstab[self.fs_index].fs;
         fs.write(&mut self.node, buf)
     }
     #[allow(unused)]
@@ -108,7 +108,7 @@ impl File {
         if self.closed {
             return Err(anyhow!("File is already closed"));
         }
-        let fs = &mut Fs::ref_mut().fstab[self.fs_index].fs;
+        let fs = &mut Fs::get_mut().fstab[self.fs_index].fs;
         fs.seek(&mut self.node, pos, whence)
     }
 }
@@ -147,9 +147,9 @@ singleton!(Fs {
 
 impl Fs {
     pub fn init(fstab: &'static mut [FsEntry]) -> Result<()> {
-        Fs::ref_mut().fstab = fstab;
+        Fs::get_mut().fstab = fstab;
 
-        for entry in Fs::ref_mut().fstab.iter_mut() {
+        for entry in Fs::get_mut().fstab.iter_mut() {
             if entry.fs.mount().is_err() {
                 println!(
                     "Mounting {} failed, try mount after formatting...",
@@ -167,7 +167,7 @@ impl Fs {
         if path == "/" {
             return Err(anyhow!("Root path does not belong to any filesystem"));
         }
-        for entry in Fs::ref_mut().fstab.iter_mut() {
+        for entry in Fs::get_mut().fstab.iter_mut() {
             if path.starts_with(entry.mount_point) {
                 let path = &path[entry.mount_point.len()..];
                 let path = if path.is_empty() { "/" } else { path };
@@ -180,7 +180,7 @@ impl Fs {
         if path == "/" {
             return Err(anyhow!("Root path does not belong to any filesystem"));
         }
-        for (index, entry) in Fs::ref_mut().fstab.iter_mut().enumerate() {
+        for (index, entry) in Fs::get_mut().fstab.iter_mut().enumerate() {
             if path.starts_with(entry.mount_point) {
                 let path = &path[entry.mount_point.len()..];
                 let path = if path.is_empty() { "/" } else { path };
@@ -190,7 +190,7 @@ impl Fs {
         Err(anyhow!("Filesystem not found for path: {}", path))
     }
     fn mount_point_to_fs(mount_point: &str) -> Result<&'static mut dyn FsHandle> {
-        for entry in Fs::ref_mut().fstab.iter_mut() {
+        for entry in Fs::get_mut().fstab.iter_mut() {
             if entry.mount_point == mount_point {
                 return Ok(entry.fs);
             }
@@ -267,7 +267,7 @@ impl Fs {
     pub fn readdir(path: &str) -> Result<Vec<Box<dyn DirEntry>>> {
         if path == "/" {
             let mut entries: Vec<Box<dyn DirEntry>> = Vec::new();
-            for entry in Fs::ref_mut().fstab.iter() {
+            for entry in Fs::get_mut().fstab.iter() {
                 struct MountPointEntry {
                     name: String,
                 }
@@ -301,7 +301,7 @@ impl Fs {
         fs.readdir(path)
     }
     pub fn sync() -> Result<()> {
-        for entry in Fs::ref_mut().fstab.iter_mut() {
+        for entry in Fs::get_mut().fstab.iter_mut() {
             entry.fs.sync()?;
         }
         Ok(())
@@ -315,18 +315,18 @@ impl Fs {
         if !stat.is_dir() {
             return Err(anyhow!("{} is not a directory", path));
         }
-        Fs::ref_mut().cwd = path.to_string();
+        Fs::get_mut().cwd = path.to_string();
         Ok(())
     }
     pub fn get_cwd() -> String {
-        Fs::ref_mut().cwd.clone()
+        Fs::get_mut().cwd.clone()
     }
     pub fn to_absolute_path(path: &str) -> String {
         // println!("1> {}", path);
         let path = if path.starts_with('/') {
             path.to_string()
         } else {
-            let cwd = Fs::ref_mut().cwd.clone();
+            let cwd = Fs::get_mut().cwd.clone();
             if cwd.ends_with('/') {
                 format!("{}{}", cwd, path)
             } else {
@@ -415,7 +415,7 @@ impl Fs {
                 }
                 "df" => {
                     println!("Mount Point    Total       Used        Free");
-                    for entry in Fs::ref_mut().fstab.iter_mut() {
+                    for entry in Fs::get_mut().fstab.iter_mut() {
                         match entry.fs.info() {
                             Ok(info) => {
                                 println!(
@@ -535,7 +535,7 @@ impl Fs {
                     let path = if let Some(p) = args.get(1) {
                         p.as_str()
                     } else {
-                        Fs::ref_mut().cwd.as_str()
+                        Fs::get_mut().cwd.as_str()
                     };
                     match Fs::readdir(path) {
                         Ok(entries) => {
