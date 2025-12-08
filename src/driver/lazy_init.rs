@@ -31,6 +31,10 @@ where
         self.value.as_mut().unwrap()
     }
 
+    pub fn init(&mut self) {
+        let _ = self.get_or_init();
+    }
+
     pub fn get(&mut self) -> Option<&mut T> {
         self.value.as_mut()
     }
