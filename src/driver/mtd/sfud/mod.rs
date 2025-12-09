@@ -1,9 +1,9 @@
 use crate::bindings;
-use crate::console::println;
+use crate::println;
 use crate::driver::mtd::MtdDriver;
 use crate::driver::spi::SpiDriver;
 use crate::driver::Driver;
-use crate::sys::delay_ms;
+use crate::sys;
 use alloc::boxed::Box;
 use core::pin::Pin;
 
@@ -76,7 +76,7 @@ impl Sfud {
 
     #[no_mangle]
     extern "C" fn sfud_spi_delay() {
-        delay_ms(1);
+        sys::delay_ms(1);
     }
 
     #[no_mangle]
@@ -95,7 +95,10 @@ impl Driver for Sfud {
             let self_ptr = self as *mut Self;
             let flash_mut = Pin::get_unchecked_mut(self.flash.as_mut());
             flash_mut.spi.user_data = self_ptr as *mut core::ffi::c_void;
-            bindings::sfud_device_init(flash_mut);
+            let res = bindings::sfud_device_init(flash_mut);
+            if res != bindings::sfud_err_SFUD_SUCCESS {
+                return Err(anyhow::anyhow!("SFUD device init failed: {}", res));
+            }
         }
         Ok(())
     }

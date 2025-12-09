@@ -1,4 +1,4 @@
-use crate::driver::Driver;
+use crate::{driver::Driver, println};
 
 pub struct LazyInit<T, F = fn() -> T>
 where
@@ -23,9 +23,13 @@ where
 
     pub fn get_or_init(&mut self) -> &mut T {
         if self.value.is_none() {
-            if let Some(f) = self.init_func.take() {
-                self.value = Some(f());
-                self.value.as_mut().unwrap().driver_init().unwrap();
+            if let Some(init_func) = self.init_func.take() {
+                self.value = Some(init_func());
+                if let Err(e) = self.value.as_mut().unwrap().driver_init() {
+                    println!("{} INIT ERROR: {:?}", self.value.as_ref().unwrap().driver_name(), e);
+                }else {
+                    println!("{} INIT OK.", self.value.as_ref().unwrap().driver_name());
+                }
             }
         }
         self.value.as_mut().unwrap()

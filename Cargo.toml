@@ -28,6 +28,7 @@ name = "emulate"
 heapless = "0.9"
 chrono = { version = "0.4", default-features = false, features = ["alloc"] }
 anyhow = { version = "1.0", default-features = false }
+async-trait = "0.1.89"
 
 [build-dependencies]
 bindgen = "0.72"

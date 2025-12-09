@@ -1,11 +1,11 @@
-mod cmd;
+mod cmds;
 mod console;
 mod console_driver;
-mod print;
+mod builtin_cmds;
 
-pub use cmd::*;
+pub use cmds::*;
 pub use console::*;
 pub use console_driver::*;
 
-pub use crate::print;
-pub use crate::println;
+#[allow(unused)]
+pub use builtin_cmds::*;

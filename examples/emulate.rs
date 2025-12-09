@@ -1,13 +1,14 @@
 use simpleos::alloc::boxed::Box;
 use simpleos::console::ConsoleDriver;
-use simpleos::driver::device::Device;
+use simpleos::driver::cpu::CpuDriver;
 use simpleos::driver::lazy_init::LazyInit;
 use simpleos::driver::systick::SysTickDriver;
 use simpleos::driver::Driver;
-use simpleos::SimpleOs;
+use simpleos::executor::Executor;
 use simpleos::singleton;
 use simpleos::sys::sleep_ms;
-use simpleos::sys::Executor;
+use simpleos::sys::Device;
+use simpleos::sys::SimpleOs;
 use simpleos::util;
 use simpleos::Result;
 
@@ -29,6 +30,22 @@ async fn task2() {
         let crc = util::crc16(data);
         println!("CRC16 of {:?} is {:04X}", data, crc);
         sub_test().await;
+    }
+}
+
+struct CpuEmulate;
+impl Driver for CpuEmulate {
+    fn driver_init(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    fn driver_deinit(&mut self) -> Result<()> {
+        Ok(())
+    }
+}
+impl CpuDriver for CpuEmulate {
+    fn cpu_reset(&mut self) -> ! {
+        panic!("System reset called in emulation.");
     }
 }
 
@@ -60,19 +77,50 @@ impl SysTickDriver for SysTickEmulate {
     }
 }
 
+struct ConsoleDriverEmulate;
+impl Driver for ConsoleDriverEmulate {
+    fn driver_init(&mut self) -> Result<()> {
+        Ok(())
+    }
+    fn driver_deinit(&mut self) -> Result<()> {
+        Ok(())
+    }
+}
+impl ConsoleDriver for ConsoleDriverEmulate {
+    fn console_getc(&mut self) -> Option<u8> {
+        None
+    }
+
+    fn console_putc(&mut self, byte: u8) -> bool {
+        print!("{}", byte as char);
+        true
+    }
+
+    fn console_flush(&mut self) {}
+}
+
 struct BoardEmulate {
+    cpu0: LazyInit<CpuEmulate>,
     systick0: LazyInit<SysTickEmulate>,
+    console0: LazyInit<ConsoleDriverEmulate>,
 }
 
 singleton!(BoardEmulate {
+    cpu0: LazyInit::new(|| CpuEmulate {}),
     systick0: LazyInit::new(|| SysTickEmulate {}),
+    console0: LazyInit::new(|| ConsoleDriverEmulate {}),
 });
 
 impl Device for BoardEmulate {
-    fn default_console(&self) -> &'static mut dyn ConsoleDriver {
-        unimplemented!()
+    fn get_cpu(&self) -> &'static mut dyn simpleos::driver::cpu::CpuDriver {
+        BoardEmulate::get_mut().cpu0.get_or_init()
     }
-    fn default_systick(&self) -> &'static mut dyn SysTickDriver {
+    
+    fn get_console(&self) -> &'static mut dyn ConsoleDriver {
+        BoardEmulate::get_mut().console0.get_or_init()
+    }
+    
+    fn get_systick(&self) -> &'static mut dyn SysTickDriver {
         BoardEmulate::get_mut().systick0.get_or_init()
     }
 }

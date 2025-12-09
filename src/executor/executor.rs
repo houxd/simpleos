@@ -1,5 +1,4 @@
-use crate::singleton;
-use crate::sys::yield_now;
+use crate::{singleton, sys};
 use alloc::boxed::Box;
 use alloc::collections::VecDeque;
 use alloc::rc::Rc;
@@ -11,15 +10,13 @@ use core::option::Option;
 use core::pin::Pin;
 use core::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
 
-pub type PinBoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
-
 pub struct Task {
     id: u16,
     cmd: String,
-    future: PinBoxFuture<'static, ()>,
+    future: Pin<Box<dyn Future<Output = ()>>>,
 }
 impl Task {
-    pub fn new(id: u16, cmd: String, future: PinBoxFuture<'static, ()>) -> Self {
+    pub fn new(id: u16, cmd: String, future: Pin<Box<dyn Future<Output = ()>>>) -> Self {
         Task { id, cmd, future }
     }
 }
@@ -170,7 +167,7 @@ impl Executor {
         Self::get_mut().exit = true;
         // 结束当前poll, 这会终止这个任务的执行
         loop {
-            yield_now().await;
+            sys::yield_now().await;
         }
     }
 
@@ -202,7 +199,7 @@ impl Executor {
                 }
             }
             // 暂停当前任务，允许其他任务运行
-            yield_now().await;
+            sys::yield_now().await;
         }
     }
 }
