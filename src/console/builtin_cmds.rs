@@ -1,6 +1,6 @@
 use core::cell::RefCell;
 
-use crate::console::CmdParser;
+use crate::console::{CmdEntry, CmdParser};
 use crate::executor::Executor;
 use crate::{println, sys};
 use alloc::rc::Rc;
