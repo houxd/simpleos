@@ -1,9 +1,9 @@
-mod cmds;
+mod cmd_parser;
 mod console;
 mod console_driver;
 mod builtin_cmds;
 
-pub use cmds::*;
+pub use cmd_parser::*;
 pub use console::*;
 pub use console_driver::*;
 

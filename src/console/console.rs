@@ -1,4 +1,4 @@
-use crate::console::Cmds;
+use crate::console::CmdParser;
 use crate::executor::Executor;
 use crate::sys::SimpleOs;
 use crate::util::RingBuf;
@@ -67,7 +67,7 @@ pub struct Console {
     escape_state: EscapeState,
     signal_interrupt: RingBuf<u8, 3>, // 用ringbuf更好, 中断要访问
     signal_handler: SignalHandler,
-    cmds_parser_list: LinkedList<Box<dyn Cmds>>,
+    cmds_parser_list: LinkedList<Box<dyn CmdParser>>,
 }
 
 singleton!(Console {
@@ -90,7 +90,7 @@ async fn default_signal_handler(sig: u8) {
 
 #[allow(unused)]
 impl Console {
-    pub fn add_commands(cmds: impl Cmds + 'static) {
+    pub fn add_commands(cmds: impl CmdParser + 'static) {
         let console = Console::get_mut();
         console.cmds_parser_list.push_back(Box::new(cmds));
     }

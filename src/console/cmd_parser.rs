@@ -4,7 +4,7 @@ use alloc::vec::Vec;
 use async_trait::async_trait;
 
 #[async_trait(?Send)]
-pub trait Cmds {
+pub trait CmdParser {
     fn help(&self) -> &'static [(&'static str, &'static str)];
     async fn parse(&self, args: Vec<String>) -> Option<Vec<String>>;
 }

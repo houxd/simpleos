@@ -1,6 +1,6 @@
 use core::cell::RefCell;
 
-use crate::console::Cmds;
+use crate::console::CmdParser;
 use crate::executor::Executor;
 use crate::{println, sys};
 use alloc::rc::Rc;
@@ -102,7 +102,7 @@ impl BuiltinCmds {
 }
 
 #[async_trait(?Send)]
-impl Cmds for BuiltinCmds {
+impl CmdParser for BuiltinCmds {
     fn help(&self) -> &'static [(&'static str, &'static str)] {
         &[
             ("help|?", "Show this help message"),
