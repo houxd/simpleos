@@ -1,4 +1,5 @@
 mod executor;
+mod runner;
 
 #[cfg(all(feature = "panic-handler", not(test)))]
 mod panic_handler;
@@ -14,4 +15,7 @@ pub use allocator_cstdlib::CAllocator;
 
 #[allow(unused)]
 pub use executor::*;
+
+#[allow(unused)]
+pub use runner::*;
 

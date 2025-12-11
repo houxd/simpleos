@@ -29,6 +29,9 @@ chrono = { version = "0.4", default-features = false, features = ["alloc"] }
 anyhow = { version = "1.0", default-features = false }
 async-trait = "0.1.89"
 
+[dev-dependencies]
+termion = "2.0"
+
 [build-dependencies]
 bindgen = "0.72"
 anyhow = "1.0"
@@ -41,3 +44,6 @@ opt-level = 0
 opt-level = "s"
 codegen-units = 1
 lto = true
+
+[lints.rust]
+unused_must_use = "warn"

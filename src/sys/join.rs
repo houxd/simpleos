@@ -5,6 +5,7 @@ use core::task::{Context, Poll};
 use alloc::boxed::Box;
 
 #[allow(unused)]
+#[must_use = "futures do nothing unless you `.await` or poll them"]
 pub struct Join2<F1, F2>
 where
     F1: Future,
@@ -83,7 +84,7 @@ where
 {
 }
 
-#[allow(unused)]
+#[must_use = "futures do nothing unless you `.await` or poll them"]
 pub fn join<F1, F2>(future1: F1, future2: F2) -> Join2<F1, F2>
 where
     F1: Future,

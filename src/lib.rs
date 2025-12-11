@@ -1,4 +1,5 @@
 #![no_std]
+#![warn(unused_must_use)]
 
 pub extern crate alloc;
 pub use anyhow::anyhow;

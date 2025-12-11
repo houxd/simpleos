@@ -1,6 +1,6 @@
 use core::cell::RefCell;
 
-use crate::console::{CmdEntry, CmdParser};
+use crate::console::CmdParser;
 use crate::executor::Executor;
 use crate::{println, sys};
 use alloc::rc::Rc;
@@ -78,7 +78,7 @@ impl BuiltinCmds {
         panic!("MANUAL PANIC");
     }
 
-    pub fn cmd_pref(&self, _args: &Vec<String>) {
+    pub async fn cmd_pref(&self, _args: &Vec<String>) {
         let c = Rc::new(RefCell::new(0u32));
         let f1 = async {
             loop {
@@ -97,7 +97,7 @@ impl BuiltinCmds {
                 }
             }
         };
-        sys::join(f1, f2);
+        sys::join(f1, f2).await;
     }
 }
 
@@ -123,7 +123,7 @@ impl CmdParser for BuiltinCmds {
                 "ps" => self.cmd_ps(&args),
                 "kill" => self.cmd_kill(&args),
                 "free" => self.cmd_free(&args),
-                "pref" => self.cmd_pref(&args),
+                "pref" => self.cmd_pref(&args).await,
                 "panic" => self.cmd_panic(&args),
                 _ => return Some(args),
             }

@@ -1,39 +1,48 @@
 use simpleos::alloc::boxed::Box;
+use simpleos::console::BuiltinCmds;
+use simpleos::console::Console;
 use simpleos::console::ConsoleDriver;
 use simpleos::driver::cpu::CpuDriver;
 use simpleos::driver::lazy_init::LazyInit;
 use simpleos::driver::systick::SysTickDriver;
 use simpleos::driver::Driver;
 use simpleos::executor::Executor;
+use simpleos::executor::ExitCode;
 use simpleos::singleton;
-use simpleos::sys::sleep_ms;
 use simpleos::sys::Device;
 use simpleos::sys::SimpleOs;
-use simpleos::util;
 use simpleos::Result;
+use termion::raw::RawTerminal;
+use std::io::{stdin, Read, Write};
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::sync::mpsc::{channel, Receiver, TryRecvError};
+use std::thread;
+use termion::raw::IntoRawMode;
 
-async fn task1() {
-    loop {
-        println!("task1");
-        sleep_ms(1000).await;
-    }
-}
+// async fn task1() {
+//     loop {
+//         println!("task1");
+//         sleep_ms(1000).await;
+//     }
+// }
 
-async fn sub_test() {
-    sleep_ms(1000).await;
-}
+// async fn sub_test() {
+//     sleep_ms(1000).await;
+// }
 
-async fn task2() {
-    loop {
-        println!("task2");
-        let data = b"Hello, world!";
-        let crc = util::crc16(data);
-        println!("CRC16 of {:?} is {:04X}", data, crc);
-        sub_test().await;
-    }
-}
+// async fn task2() {
+//     loop {
+//         println!("task2");
+//         let data = b"Hello, world!";
+//         let crc = util::crc16(data);
+//         println!("CRC16 of {:?} is {:04X}", data, crc);
+//         sub_test().await;
+//     }
+// }
 
 struct CpuEmulate;
+
 impl Driver for CpuEmulate {
     fn driver_init(&mut self) -> Result<()> {
         Ok(())
@@ -43,13 +52,16 @@ impl Driver for CpuEmulate {
         Ok(())
     }
 }
+
 impl CpuDriver for CpuEmulate {
     fn cpu_reset(&mut self) -> ! {
+        BoardEmulate::get_mut().console0.get().unwrap().restore_terminal();
         panic!("System reset called in emulation.");
     }
 }
 
 struct SysTickEmulate;
+
 impl Driver for SysTickEmulate {
     fn driver_init(&mut self) -> Result<()> {
         Ok(())
@@ -59,6 +71,7 @@ impl Driver for SysTickEmulate {
         Ok(())
     }
 }
+
 impl SysTickDriver for SysTickEmulate {
     fn get_system_ms(&self) -> u32 {
         static mut BOOT_TIMESTAMP: u128 = 0;
@@ -77,8 +90,43 @@ impl SysTickDriver for SysTickEmulate {
     }
 }
 
-struct ConsoleDriverEmulate;
-impl Driver for ConsoleDriverEmulate {
+struct ConsoleIOEmulate {
+    rx: Receiver<u8>,
+    raw_term: Arc<Mutex<Option<RawTerminal<std::io::Stdout>>>>,
+}
+
+impl ConsoleIOEmulate {
+    fn new() -> Self {
+        let (tx, rx) = channel();
+        let raw_term = Arc::new(Mutex::new(None));
+        let raw_term_clone = raw_term.clone();
+
+        thread::spawn(move || {
+            let mut stdin = stdin();
+            let raw = std::io::stdout().into_raw_mode().unwrap();
+            *raw_term_clone.lock().unwrap() = Some(raw);
+
+            let mut buffer = [0u8; 1];
+            loop {
+                if stdin.read_exact(&mut buffer).is_ok() {
+                    if tx.send(buffer[0]).is_err() {
+                        break;
+                    }
+                }
+            }
+            // 线程结束时自动 drop raw_term，恢复终端
+        });
+
+        ConsoleIOEmulate { rx, raw_term }
+    }
+
+    fn restore_terminal(&mut self) {
+        // 显式恢复终端
+        *self.raw_term.lock().unwrap() = None;
+    }
+}
+
+impl Driver for ConsoleIOEmulate {
     fn driver_init(&mut self) -> Result<()> {
         Ok(())
     }
@@ -86,9 +134,15 @@ impl Driver for ConsoleDriverEmulate {
         Ok(())
     }
 }
-impl ConsoleDriver for ConsoleDriverEmulate {
+
+impl ConsoleDriver for ConsoleIOEmulate {
     fn console_getc(&mut self) -> Option<u8> {
-        None
+        let c = match self.rx.try_recv() {
+            Ok(byte) => Some(byte),
+            Err(TryRecvError::Empty) => None,
+            Err(TryRecvError::Disconnected) => None,
+        };
+        c
     }
 
     fn console_putc(&mut self, byte: u8) -> bool {
@@ -96,38 +150,48 @@ impl ConsoleDriver for ConsoleDriverEmulate {
         true
     }
 
-    fn console_flush(&mut self) {}
+    fn console_flush(&mut self) {
+        std::io::stdout().flush().unwrap();
+    }
 }
 
 struct BoardEmulate {
     cpu0: LazyInit<CpuEmulate>,
     systick0: LazyInit<SysTickEmulate>,
-    console0: LazyInit<ConsoleDriverEmulate>,
+    console0: LazyInit<ConsoleIOEmulate>,
 }
 
 singleton!(BoardEmulate {
     cpu0: LazyInit::new(|| CpuEmulate {}),
     systick0: LazyInit::new(|| SysTickEmulate {}),
-    console0: LazyInit::new(|| ConsoleDriverEmulate {}),
+    console0: LazyInit::new(|| ConsoleIOEmulate::new()),
 });
 
 impl Device for BoardEmulate {
     fn get_cpu(&self) -> &'static mut dyn simpleos::driver::cpu::CpuDriver {
         BoardEmulate::get_mut().cpu0.get_or_init()
     }
-    
+
     fn get_console(&self) -> &'static mut dyn ConsoleDriver {
         BoardEmulate::get_mut().console0.get_or_init()
     }
-    
+
     fn get_systick(&self) -> &'static mut dyn SysTickDriver {
         BoardEmulate::get_mut().systick0.get_or_init()
     }
 }
 
+async fn init() -> ExitCode {
+    // Executor::spawn("task1", Box::pin(task1()));
+    // Executor::spawn("task2", Box::pin(task2()));
+    let pid = Executor::spawn("console", Box::pin(Console::start()));
+    Executor::wait(pid).await;
+    0
+}
+
 fn main() {
     SimpleOs::init(BoardEmulate::get_mut());
-    Executor::spawn("task1", Box::pin(task1()));
-    Executor::spawn("task2", Box::pin(task2()));
+    Console::add_commands(BuiltinCmds);
+    Executor::spawn("init", Box::pin(init()));
     Executor::run();
 }

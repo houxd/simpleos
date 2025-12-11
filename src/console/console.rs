@@ -1,5 +1,5 @@
 use crate::console::CmdParser;
-use crate::executor::Executor;
+use crate::executor::{Executor, ExitCode};
 use crate::sys::SimpleOs;
 use crate::util::RingBuf;
 use crate::{println, select, singleton, sys};
@@ -84,7 +84,7 @@ singleton!(Console {
 
 async fn default_signal_handler(sig: u8) {
     if sig == 3 {
-        Executor::exit().await;
+        Executor::exit(1).await;
     }
 }
 
@@ -278,7 +278,8 @@ impl Console {
                     select! {
                         _ = wait_signal_future => {},
                         _ = cmd_future => {},
-                    }
+                    };
+                    0
                 }),
             );
             Console::join(pid).await;
@@ -310,9 +311,10 @@ impl Console {
         }
     }
 
-    pub async fn start() {
+    pub async fn start() -> ExitCode {
         let console = Console::get_mut();
         console._start().await;
+        0
     }
 
     async fn _start(&mut self) {
@@ -496,7 +498,7 @@ impl Console {
                     }
                 }
             }
-            sys::yield_now().await;
+            sys::yield_now();
         }
     }
 }
