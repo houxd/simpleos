@@ -1,69 +1,93 @@
-use crate::executor::Runner;
-use crate::{singleton, sys};
+use crate::executor::Runnable;
+use crate::{println, singleton, sys};
 use alloc::boxed::Box;
-use alloc::collections::btree_map::BTreeMap;
 use alloc::collections::VecDeque;
 use alloc::string::String;
 use alloc::vec::Vec;
-use core::cell::RefCell;
 use core::future::Future;
 use core::option::Option;
 use core::pin::Pin;
 use core::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
 
 pub type TaskId = u16;
-
+pub type TaskCountType = TaskId;
 pub type ExitCode = i8;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ExitStatus {
     Exited(ExitCode), // 任务正常退出，携带退出码
-    Killed,           // 任务被杀死
-    Aborted,          // 任务异常中止
     ErrorPid,         // 等待了一个无效的PID
     NotExist,         // 任务不存在
-    NoRunning,        // 当前没有任务在运行
+    NotRunning,       // 当前任务未运行, 必须在任务上下文中调用
+    Aborted,          // 任务异常中止, 不应该发生
 }
 
-struct Waiter {
-    waiter_id: TaskId,          // 等待的任务ID
-    result: Option<ExitStatus>, // 存储结果
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Signal {
+    SIGINT,     // 中断信号 (Ctrl+C)
+    SIGTERM,    // 终止信号
+    SIGKILL,    // 强制杀死(不可捕获)
+    SIGSTOP,    // 暂停信号(不可捕获)
+    SIGCONT,    // 继续执行
+    SIGUSR(u8), // 用户自定义信号
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum SignalAction {
+    Ignore,              // 忽略信号
+    Terminate(ExitCode), // 终止任务
+    Pause,               // 暂停执行
+    Continue,            // 继续执行
 }
 
 pub struct Task {
     id: TaskId,
     cmd: String,
     future: Pin<Box<dyn Future<Output = ExitCode>>>,
-    exit_request: Option<ExitCode>,
+    paused: bool,                                                // 任务是否被暂停
+    exited: Option<ExitCode>,                                    // 任务结束状态
+    waiters: TaskCountType,                                      // 等待该任务完成的任务数量
+    pending_signals: VecDeque<Signal>,                           // 待处理的信号队列
+    signal_handler: Option<Box<dyn Fn(Signal) -> SignalAction>>, // 信号处理器
+}
+
+impl Task {
+    pub fn new(id: TaskId, cmd: String, future: Pin<Box<dyn Future<Output = ExitCode>>>) -> Self {
+        Self {
+            id,
+            cmd,
+            future,
+            paused: false,
+            exited: None,
+            waiters: 0,
+            pending_signals: VecDeque::new(),
+            signal_handler: None,
+        }
+    }
 }
 
 pub struct Executor {
-    tasks: RefCell<VecDeque<Task>>,
-    next_id_hint: RefCell<TaskId>,
-    current_task_id: RefCell<Option<TaskId>>,
-    waiters: RefCell<BTreeMap<TaskId, Vec<Waiter>>>,
+    tasks: VecDeque<Task>,
+    next_id_hint: TaskId,
+    current_task_id: Option<TaskId>,
 }
 
 singleton!(Executor {
-    tasks: RefCell::new(VecDeque::new()),
-    next_id_hint: RefCell::new(0),
-    current_task_id: RefCell::new(None),
-    waiters: RefCell::new(BTreeMap::new()),
+    tasks: VecDeque::new(),
+    next_id_hint: 0,
+    current_task_id: None,
 });
 
 impl Executor {
-    fn next_id(&self) -> TaskId {
-        let tasks = self.tasks.borrow();
-        let mut hint = self.next_id_hint.borrow_mut();
-
+    fn next_id(&mut self) -> TaskId {
         // 从提示位置开始搜索
-        let mut candidate = *hint;
+        let mut candidate = self.next_id_hint;
         let start = candidate;
 
         loop {
             // 检查当前候选ID是否可用
-            if !tasks.iter().any(|task| task.id == candidate) {
-                *hint = candidate.wrapping_add(1);
+            if !self.tasks.iter().any(|task| task.id == candidate) {
+                self.next_id_hint = candidate.wrapping_add(1);
                 return candidate;
             }
 
@@ -83,95 +107,126 @@ impl Executor {
     ) -> TaskId {
         let executor = Executor::get_mut();
         let id = executor.next_id();
-        executor.tasks.borrow_mut().push_back(Task {
-            id,
-            cmd: cmd.into(),
-            future,
-            exit_request: None,
-        });
+        executor.tasks.push_back(Task::new(id, cmd.into(), future));
         id
     }
 
-    pub fn spawn_runner(runner: Runner, args: &[String]) -> TaskId {
+    pub fn spawn_runnable(runner: Runnable, args: &[String]) -> TaskId {
         let executor = Executor::get_mut();
         let id = executor.next_id();
-        executor.tasks.borrow_mut().push_back(Task {
-            id,
-            cmd: runner.get_name(),
-            future: runner.run(args),
-            exit_request: None,
-        });
+        executor
+            .tasks
+            .push_back(Task::new(id, runner.get_name(), runner.run(args)));
         id
     }
 
     pub fn run() {
         let executor = Executor::get_mut();
+
+        // 创建一个简单的waker
+        let waker = unsafe { Waker::from_raw(dummy_raw_waker()) };
+        let mut context = Context::from_waker(&waker);
+
         loop {
-            let mut task = {
-                let mut tasks = executor.tasks.borrow_mut();
-                if let Some(task) = tasks.pop_front() {
+            let task: &mut Task = {
+                if let Some(task) = executor.tasks.front_mut() {
                     task
                 } else {
                     break; // 没有更多任务
                 }
             };
 
-            // 创建一个简单的waker
-            let waker = unsafe { Waker::from_raw(dummy_raw_waker()) };
-            let mut context = Context::from_waker(&waker);
+            // 任务已退出
+            if task.exited.is_some() {
+                if task.waiters == 0 {
+                    executor.tasks.pop_front(); // 任务无等待者，移除任务
+                } else {
+                    executor.tasks.rotate_left(1); // 继续下一个任务
+                }
+                continue;
+            }
 
-            // 设置当前任务
-            *executor.current_task_id.borrow_mut() = Some(task.id);
+            // 设置当前任务ID, 用于 exit() 等函数使用
+            executor.current_task_id = Some(task.id);
 
-            // 轮询任务
-            let exit_status = match task.future.as_mut().poll(&mut context) {
-                Poll::Ready(exit_code) => Some(ExitStatus::Exited(exit_code)),
-                Poll::Pending => {
-                    // 检查是否有退出请求
-                    if let Some(exit_code) = task.exit_request.take() {
-                        Some(ExitStatus::Exited(exit_code))
-                    } else {
-                        // 任务未完成，重新加入队列
-                        executor.tasks.borrow_mut().push_back(task);
-                        None
+            // 处理待处理的信号
+            while let Some(signal) = task.pending_signals.pop_front() {
+                let action = if let Some(ref handler) = task.signal_handler {
+                    match signal {
+                        // SIGKILL 和 SIGSTOP 不能被捕获
+                        Signal::SIGKILL => SignalAction::Terminate(-9),
+                        Signal::SIGSTOP => SignalAction::Pause,
+                        _ => handler(signal),
+                    }
+                } else {
+                    // 默认行为
+                    match signal {
+                        Signal::SIGINT | Signal::SIGTERM => SignalAction::Terminate(-1),
+                        Signal::SIGKILL => SignalAction::Terminate(-9),
+                        Signal::SIGSTOP => SignalAction::Pause,
+                        Signal::SIGCONT => SignalAction::Continue,
+                        Signal::SIGUSR(_) => SignalAction::Ignore,
+                    }
+                };
+
+                match action {
+                    SignalAction::Terminate(code) => {
+                        task.exited = Some(code);
+                        task.paused = false;
+                        break;
+                    }
+                    SignalAction::Ignore => continue,
+                    SignalAction::Pause => {
+                        task.paused = true;
+                        continue;
+                    }
+                    SignalAction::Continue => {
+                        task.paused = false;
+                        continue;
                     }
                 }
-            };
+            }
+
+            // 如果任务被暂停，跳过执行
+            if !task.paused {
+                // 轮询任务
+                match task.future.as_mut().poll(&mut context) {
+                    Poll::Ready(exit_code) => {
+                        task.exited = Some(exit_code); // 任务完成，设置退出码
+                        if task.waiters == 0 {
+                            // 任务无等待者，移除任务
+                            executor.tasks.pop_front();
+                        } else {
+                            executor.tasks.rotate_left(1); // 继续下一个任务
+                        }
+                    }
+                    Poll::Pending => {
+                        executor.tasks.rotate_left(1); // 任务未完成，移到队列末尾
+                    }
+                }
+            }
 
             // 清除当前任务
-            let task_id = executor.current_task_id.borrow_mut().take().unwrap();
-
-            // 如果任务完成，通知等待者
-            if let Some(exit_status) = exit_status {
-                let mut waiters = executor.waiters.borrow_mut();
-                if let Some(waiter_list) = waiters.get_mut(&task_id) {
-                    // 填充所有等待者的结果
-                    for waiter in waiter_list.iter_mut() {
-                        waiter.result = Some(exit_status);
-                    }
-                }
-                // 注意：不删除等待者列表，让wait()函数自己清理
-            }
+            let _ = executor.current_task_id.take().unwrap();
         }
     }
 
     /// 检查是否还有待执行的任务
     #[allow(unused)]
     pub fn has_tasks() -> bool {
-        !Self::get_mut().tasks.borrow().is_empty()
+        !Self::get_mut().tasks.is_empty()
     }
 
     /// 获取当前任务队列长度
     #[allow(unused)]
     pub fn task_count() -> usize {
-        Self::get_mut().tasks.borrow().len()
+        Self::get_mut().tasks.len()
     }
 
     /// 获取任务列表
     pub fn task_list() -> Vec<(TaskId, String)> {
         Self::get_mut()
             .tasks
-            .borrow()
             .iter()
             .map(|task| (task.id, task.cmd.clone()))
             .collect()
@@ -179,7 +234,7 @@ impl Executor {
 
     /// 获取当前运行任务ID
     pub fn current_task_id() -> Option<TaskId> {
-        *Self::get_mut().current_task_id.borrow()
+        Self::get_mut().current_task_id
     }
 
     /// 杀死任务
@@ -188,33 +243,7 @@ impl Executor {
             return false; // 不能杀死自己
         }
 
-        let existed = {
-            let mut tasks = Self::get_mut().tasks.borrow_mut();
-            let before = tasks.len();
-            tasks.retain(|task| task.id != id);
-            tasks.len() < before
-        };
-
-        if existed {
-            let mut waiters = Self::get_mut().waiters.borrow_mut();
-
-            // 通知等待被杀死任务的等待者
-            if let Some(waiter_list) = waiters.get_mut(&id) {
-                for waiter in waiter_list.iter_mut() {
-                    waiter.result = Some(ExitStatus::Killed);
-                }
-            }
-
-            // 清理该任务作为等待者的记录
-            for (_, waiter_list) in waiters.iter_mut() {
-                waiter_list.retain(|w| w.waiter_id != id);
-            }
-
-            // 清理空的等待者列表
-            waiters.retain(|_, waiter_list| !waiter_list.is_empty());
-        }
-
-        existed
+        Self::send_signal(id, Signal::SIGKILL)
     }
 
     /// 结束当前任务, 设置 exit 标志
@@ -228,9 +257,13 @@ impl Executor {
 
         // 在任务队列中找到当前任务，设置其 exit_request
         {
-            let mut tasks = Self::get_mut().tasks.borrow_mut();
-            if let Some(task) = tasks.iter_mut().find(|t| t.id == current_id) {
-                task.exit_request = Some(exit_code);
+            // let mut tasks = Self::get_mut().tasks.borrow_mut();
+            if let Some(task) = Self::get_mut()
+                .tasks
+                .iter_mut()
+                .find(|t| t.id == current_id)
+            {
+                task.exited = Some(exit_code);
             }
         }
 
@@ -250,8 +283,8 @@ impl Executor {
         }
         // 检查任务队列中是否存在该任务
         let executor = Executor::get_mut();
-        let tasks = executor.tasks.borrow();
-        tasks.iter().any(|task| task.id == id)
+        // let tasks = executor.tasks.borrow();
+        executor.tasks.iter().any(|task| task.id == id)
     }
 
     /// 等待任务完成
@@ -262,7 +295,7 @@ impl Executor {
             Some(id) => id,
             None => {
                 // 当前没有任务在运行?
-                return ExitStatus::NoRunning;
+                return ExitStatus::NotRunning;
             }
         };
 
@@ -271,24 +304,11 @@ impl Executor {
             return ExitStatus::ErrorPid;
         }
 
-        // 用代码块限制借用范围
-        let task_exists = {
-            let tasks = Self::get_mut().tasks.borrow();
-            tasks.iter().any(|task| task.id == id)
-        }; // tasks 在这里释放
-
-        if !task_exists {
+        // 检查任务是否存在, 增加等待者计数
+        if let Some(task) = Self::get_mut().tasks.iter_mut().find(|t| t.id == id) {
+            task.waiters = task.waiters.wrapping_add(1);
+        } else {
             return ExitStatus::NotExist;
-        }
-
-        // 注册为等待者
-        {
-            let mut waiters = Self::get_mut().waiters.borrow_mut();
-            let waiter_list = waiters.entry(id).or_insert_with(Vec::new);
-            waiter_list.push(Waiter {
-                waiter_id: current_id,
-                result: None,
-            });
         }
 
         // 轮询等待结果
@@ -296,31 +316,47 @@ impl Executor {
             // 让出当前任务，允许其他任务运行
             sys::yield_now().await;
 
-            // 检查等待者是否仍然存在
-            let waiters = Self::get_mut().waiters.borrow();
-            if let Some(waiter_list) = waiters.get(&id) {
-                for w in waiter_list.iter() {
-                    if w.waiter_id == current_id {
-                        if let Some(exit_status) = w.result {
-                            // 清理等待者
-                            drop(waiters); // 释放不可变借用
-                            let mut waiters = Self::get_mut().waiters.borrow_mut();
-                            if let Some(waiter_list) = waiters.get_mut(&id) {
-                                waiter_list.retain(|w| w.waiter_id != current_id);
-                                // 如果没有等待者了，删除整个条目
-                                if waiter_list.is_empty() {
-                                    waiters.remove(&id);
-                                }
-                            }
-                            // 结果已就绪
-                            return exit_status;
-                        }
-                    }
+            // 检查目标任务的状态
+            if let Some(task) = Self::get_mut().tasks.iter_mut().find(|t| t.id == id) {
+                if let Some(exit_code) = task.exited {
+                    // 目标任务已退出，减少等待者计数
+                    task.waiters = task.waiters.wrapping_sub(1);
+
+                    // 任务已退出，返回结果
+                    return ExitStatus::Exited(exit_code);
                 }
             } else {
-                // 已被清理，任务不存在
+                // 任务不存在, 不应该发生
                 return ExitStatus::Aborted;
             }
+        }
+    }
+
+    /// 向任务发送信号
+    pub fn send_signal(target_id: TaskId, signal: Signal) -> bool {
+        if let Some(task) = Self::get_mut().tasks.iter_mut().find(|t| t.id == target_id) {
+            task.pending_signals.push_back(signal);
+            return true;
+        }
+
+        false
+    }
+
+    /// 注册信号处理器
+    pub fn register_signal_handler<F>(handler: F)
+    where
+        F: Fn(Signal) -> SignalAction + 'static,
+    {
+        if let Some(current_id) = Self::current_task_id() {
+            if let Some(task) = Self::get_mut()
+                .tasks
+                .iter_mut()
+                .find(|t| t.id == current_id)
+            {
+                task.signal_handler = Some(Box::new(handler));
+            }
+        } else {
+            println!("No current task");
         }
     }
 }

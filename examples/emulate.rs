@@ -20,27 +20,6 @@ use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::thread;
 use termion::raw::IntoRawMode;
 
-// async fn task1() {
-//     loop {
-//         println!("task1");
-//         sleep_ms(1000).await;
-//     }
-// }
-
-// async fn sub_test() {
-//     sleep_ms(1000).await;
-// }
-
-// async fn task2() {
-//     loop {
-//         println!("task2");
-//         let data = b"Hello, world!";
-//         let crc = util::crc16(data);
-//         println!("CRC16 of {:?} is {:04X}", data, crc);
-//         sub_test().await;
-//     }
-// }
-
 struct CpuEmulate;
 
 impl Driver for CpuEmulate {
@@ -57,6 +36,10 @@ impl CpuDriver for CpuEmulate {
     fn cpu_reset(&mut self) -> ! {
         BoardEmulate::get_mut().console0.get().unwrap().restore_terminal();
         panic!("System reset called in emulation.");
+    }
+    fn cpu_panic(&mut self, panic_info: String) -> ! {
+        BoardEmulate::get_mut().console0.get().unwrap().restore_terminal();
+        panic!("Panic: {}", panic_info);
     }
 }
 
@@ -182,8 +165,6 @@ impl Device for BoardEmulate {
 }
 
 async fn init() -> ExitCode {
-    // Executor::spawn("task1", Box::pin(task1()));
-    // Executor::spawn("task2", Box::pin(task2()));
     let pid = Executor::spawn("console", Box::pin(Console::start()));
     Executor::wait(pid).await;
     0

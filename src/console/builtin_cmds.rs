@@ -1,11 +1,12 @@
-use core::cell::RefCell;
-
 use crate::console::CmdParser;
-use crate::executor::Executor;
+use crate::executor::{Executor, ExitCode};
+use crate::sys::SimpleOs;
 use crate::{println, sys};
 use alloc::rc::Rc;
+use alloc::string::ToString;
 use alloc::{boxed::Box, string::String, vec::Vec};
 use async_trait::async_trait;
+use core::cell::RefCell;
 
 #[allow(unused)]
 pub struct BuiltinCmds;
@@ -16,32 +17,37 @@ impl BuiltinCmds {
         BuiltinCmds
     }
 
-    pub fn cmd_reset(&self, _args: &Vec<String>) {
+    pub fn cmd_reset(&self, _args: &Vec<String>) -> ExitCode {
         sys::SimpleOs::cpu().cpu_reset();
+        0
     }
 
-    pub fn cmd_ps(&self, _args: &Vec<String>) {
+    pub fn cmd_ps(&self, _args: &Vec<String>) -> ExitCode {
         let task_list = Executor::task_list();
         println!("id\ttask");
         for (task_id, name) in task_list.iter() {
             println!("{}\t{}", task_id, name);
         }
+        0
     }
 
-    pub fn cmd_kill(&self, args: &Vec<String>) {
+    pub fn cmd_kill(&self, args: &Vec<String>) -> ExitCode {
         if let Some(id_str) = args.get(1) {
             if let Ok(id) = id_str.parse::<u16>() {
                 Executor::kill(id);
                 println!("Killed task with ID {}", id);
+                0
             } else {
                 println!("Invalid task ID: {}", id_str);
+                1
             }
         } else {
             println!("Usage: kill <task_id>");
+            2
         }
     }
 
-    pub fn cmd_free(&self, _args: &Vec<String>) {
+    pub fn cmd_free(&self, _args: &Vec<String>) -> ExitCode {
         const MAX_BLOCK_INDEX: usize = 24; // 32;
         let mut total = 0u32;
         let mut block = 1u32 << MAX_BLOCK_INDEX; // 从4KB开始尝试分配
@@ -72,13 +78,14 @@ impl BuiltinCmds {
         }
 
         println!("Free memory: {} bytes", total);
+        0
     }
 
-    pub fn cmd_panic(&self, _args: &Vec<String>) {
-        panic!("MANUAL PANIC");
+    pub fn cmd_panic(&self, _args: &Vec<String>) -> ExitCode {
+        SimpleOs::cpu().cpu_panic("MANUAL PANIC".to_string());
     }
 
-    pub async fn cmd_pref(&self, _args: &Vec<String>) {
+    pub async fn cmd_pref(&self, _args: &Vec<String>) -> ExitCode {
         let c = Rc::new(RefCell::new(0u32));
         let f1 = async {
             loop {
@@ -98,6 +105,7 @@ impl BuiltinCmds {
             }
         };
         sys::join(f1, f2).await;
+        0
     }
 }
 
@@ -107,7 +115,6 @@ impl CmdParser for BuiltinCmds {
         &[
             ("help|?", "Show this help message"),
             ("reset", "Perform a system reset"),
-            // ("date", "Get or set the system date and time"),
             ("ps", "Show running tasks"),
             ("kill", "Terminate a task"),
             ("free", "Show free memory"),
@@ -116,7 +123,7 @@ impl CmdParser for BuiltinCmds {
         ]
     }
 
-    async fn parse(&self, args: Vec<String>) -> Option<Vec<String>> {
+    async fn parse(&self, args: &Vec<String>) -> ExitCode {
         if let Some(cmd) = args.get(0) {
             match cmd.as_str() {
                 "reset" => self.cmd_reset(&args),
@@ -125,11 +132,10 @@ impl CmdParser for BuiltinCmds {
                 "free" => self.cmd_free(&args),
                 "pref" => self.cmd_pref(&args).await,
                 "panic" => self.cmd_panic(&args),
-                _ => return Some(args),
+                _ => return 127, // Command not found
             }
-            return None;
         } else {
-            return Some(args);
+            127 // No command provided
         }
     }
 }

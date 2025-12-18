@@ -1,15 +1,11 @@
 use crate::console::CmdParser;
 use crate::executor::{Executor, ExitCode};
 use crate::sys::SimpleOs;
-use crate::util::RingBuf;
-use crate::{println, select, singleton, sys};
+use crate::{println, singleton, sys};
 use alloc::boxed::Box;
-use alloc::collections::linked_list::LinkedList;
+use alloc::collections::vec_deque::VecDeque;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
-use core::future::Future;
-use core::pin::Pin;
-// use heapless::Vec as HeaplessVec;
 
 const HISTORY_SIZE: usize = 10; // 历史记录最大条数
 const LINE_BUFFER_SIZE: usize = 512; // 每行最大字符数
@@ -21,72 +17,28 @@ enum EscapeState {
     Bracket,
 }
 
-struct SignalHandler {
-    f: Box<dyn Fn(u8) -> Pin<Box<dyn Future<Output = ()>>>>,
-}
-
-impl SignalHandler {
-    // 从异步函数创建
-    pub fn new<F, Fut>(f: F) -> Self
-    where
-        F: Fn(u8) -> Fut + 'static,
-        Fut: Future<Output = ()> + 'static,
-    {
-        SignalHandler {
-            f: Box::new(move |sig| Box::pin(f(sig))),
-        }
-    }
-
-    // 从同步闭包创建(返回异步块)
-    pub fn from_sync<F>(f: F) -> Self
-    where
-        F: Fn(u8) + 'static,
-    {
-        SignalHandler {
-            f: Box::new(move |sig| {
-                f(sig);
-                Box::pin(async {})
-            }),
-        }
-    }
-
-    fn call(&self, sig: u8) -> Pin<Box<dyn Future<Output = ()>>> {
-        (self.f)(sig)
-    }
-}
-
 pub struct Console {
     prompt: String,
     // 历史记录
-    history: LinkedList<Vec<u8>>,
+    history: VecDeque<Vec<u8>>,
     history_index: Option<usize>,
     // 当前编辑状态
     current_line: Vec<u8>,
     cursor_pos: usize,
     // ANSI转义序列状态
     escape_state: EscapeState,
-    signal_interrupt: RingBuf<u8, 3>, // 用ringbuf更好, 中断要访问
-    signal_handler: SignalHandler,
-    cmds_parser_list: LinkedList<Box<dyn CmdParser>>,
+    cmds_parser_list: VecDeque<Box<dyn CmdParser>>,
 }
 
 singleton!(Console {
     prompt: String::from("> "),
-    history: LinkedList::new(),
+    history: VecDeque::new(),
     history_index: None,
     current_line: Vec::new(),
     cursor_pos: 0,
     escape_state: EscapeState::Normal,
-    signal_interrupt: RingBuf::new(),
-    signal_handler: SignalHandler::new(default_signal_handler),
-    cmds_parser_list: LinkedList::new(),
+    cmds_parser_list: VecDeque::new(),
 });
-
-async fn default_signal_handler(sig: u8) {
-    if sig == 3 {
-        Executor::exit(1).await;
-    }
-}
 
 #[allow(unused)]
 impl Console {
@@ -233,8 +185,6 @@ impl Console {
     async fn exec_cmd(&mut self, args: Vec<String>) {
         SimpleOs::console().console_flush();
         SimpleOs::console().console_flush_rx();
-        self.signal_interrupt.clear();
-        self.signal_handler = SignalHandler::new(default_signal_handler);
         if let Some(cmd) = args.get(0) {
             // 显示帮助
             if cmd == "help" || cmd == "?" {
@@ -253,36 +203,23 @@ impl Console {
             let pid = Executor::spawn(
                 cmd.clone(),
                 Box::pin(async move {
-                    let wait_signal_future = async {
-                        loop {
-                            if let Some(sig) = Console::get_mut().signal_interrupt.pop() {
-                                Console::get_mut().signal_handler.call(sig).await;
-                            }
-                            sys::yield_now().await;
+                    let parser_list = &Console::get_mut().cmds_parser_list;
+                    for parser in parser_list.iter() {
+                        let exit_code = parser.parse(&args).await;
+                        if exit_code != 127 {
+                            return exit_code;
                         }
-                    };
-                    let cmd_future = async move {
-                        let mut args = Option::Some(args);
-                        let parser_list = &Console::get_mut().cmds_parser_list;
-                        for parser in parser_list.iter() {
-                            if let Some(a) = args {
-                                args = parser.parse(a).await;
-                            } else {
-                                break;
-                            }
-                        }
-                        if let Some(a) = args {
-                            println!("Unknown command: {}", a.join(" "));
-                        }
-                    };
-                    select! {
-                        _ = wait_signal_future => {},
-                        _ = cmd_future => {},
-                    };
-                    0
+                    }
+                    println!("Unknown command: {}", args.join(" "));
+                    127
                 }),
             );
-            Console::join(pid).await;
+            loop {
+                if !Executor::is_running(pid) {
+                    break;
+                }
+                sys::yield_now().await;
+            }
         }
     }
 
@@ -426,92 +363,70 @@ impl Console {
         }
     }
 
-    pub async fn join(id: u16) {
-        loop {
-            if !Executor::is_running(id) {
-                break;
-            }
-            sys::yield_now().await;
-        }
-    }
+    // pub async fn join(id: u16) {
+    //     loop {
+    //         if !Executor::is_running(id) {
+    //             break;
+    //         }
+    //         sys::yield_now().await;
+    //     }
+    // }
 
-    pub fn set_signal_handler<F, Fut>(handler: F)
-    where
-        F: Fn(u8) -> Fut + 'static,
-        Fut: Future<Output = ()> + 'static,
-    {
-        let console = Console::get_mut();
-        console.signal_handler = SignalHandler::new(handler);
-    }
-
-    pub fn set_signal_handler_sync<F>(handler: F)
-    where
-        F: Fn(u8) + 'static,
-    {
-        let console = Console::get_mut();
-        console.signal_handler = SignalHandler::from_sync(handler);
-    }
-
-    pub fn signal_interrupt(sig: u8) {
-        let mut console = Console::get_mut();
-        let _ = console.signal_interrupt.push(sig);
-    }
-
-    pub async fn read_key_async() -> Option<Key> {
-        let console = Console::get_mut();
-        let io = SimpleOs::console();
-        let mut escape_state = EscapeState::Normal;
-        loop {
-            if let Some(b) = io.console_getc() {
-                match escape_state {
-                    EscapeState::Normal => match b {
-                        b'\r' | b'\n' => return Some(Key::Enter),
-                        3 => return Some(Key::CtrlC),
-                        8 | 127 => return Some(Key::Backspace),
-                        27 => {
-                            escape_state = EscapeState::Escape;
-                        }
-                        b if b.is_ascii_graphic() || b == b' ' => {
-                            return Some(Key::Char(b));
-                        }
-                        _ => {
-                            return Some(Key::Unknown(b));
-                        }
-                    },
-                    EscapeState::Escape => match b {
-                        b'[' => {
-                            escape_state = EscapeState::Bracket;
-                        }
-                        _ => {
-                            escape_state = EscapeState::Normal;
-                        }
-                    },
-                    EscapeState::Bracket => {
-                        escape_state = EscapeState::Normal;
-                        match b {
-                            b'A' => return Some(Key::Up),
-                            b'B' => return Some(Key::Down),
-                            b'C' => return Some(Key::Right),
-                            b'D' => return Some(Key::Left),
-                            _ => return Some(Key::Unknown(b)),
-                        }
-                    }
-                }
-            }
-            sys::yield_now();
-        }
-    }
+    // pub async fn read_key() -> Option<Key> {
+    //     let console = Console::get_mut();
+    //     let io = SimpleOs::console();
+    //     let mut escape_state = EscapeState::Normal;
+    //     loop {
+    //         if let Some(b) = io.console_getc() {
+    //             match escape_state {
+    //                 EscapeState::Normal => match b {
+    //                     b'\r' | b'\n' => return Some(Key::Enter),
+    //                     3 => return Some(Key::CtrlC),
+    //                     8 | 127 => return Some(Key::Backspace),
+    //                     27 => {
+    //                         escape_state = EscapeState::Escape;
+    //                     }
+    //                     b if b.is_ascii_graphic() || b == b' ' => {
+    //                         return Some(Key::Char(b));
+    //                     }
+    //                     _ => {
+    //                         return Some(Key::Unknown(b));
+    //                     }
+    //                 },
+    //                 EscapeState::Escape => match b {
+    //                     b'[' => {
+    //                         escape_state = EscapeState::Bracket;
+    //                     }
+    //                     _ => {
+    //                         escape_state = EscapeState::Normal;
+    //                     }
+    //                 },
+    //                 EscapeState::Bracket => {
+    //                     escape_state = EscapeState::Normal;
+    //                     match b {
+    //                         b'A' => return Some(Key::Up),
+    //                         b'B' => return Some(Key::Down),
+    //                         b'C' => return Some(Key::Right),
+    //                         b'D' => return Some(Key::Left),
+    //                         _ => return Some(Key::Unknown(b)),
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //         sys::yield_now();
+    //     }
+    // }
 }
 
-#[allow(unused)]
-pub enum Key {
-    Char(u8),
-    CtrlC,
-    Enter,
-    Backspace,
-    Up,
-    Down,
-    Left,
-    Right,
-    Unknown(u8),
-}
+// #[allow(unused)]
+// pub enum Key {
+//     Char(u8),
+//     CtrlC,
+//     Enter,
+//     Backspace,
+//     Up,
+//     Down,
+//     Left,
+//     Right,
+//     Unknown(u8),
+// }

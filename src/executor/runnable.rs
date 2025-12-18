@@ -6,18 +6,18 @@ use crate::executor::ExitCode;
 
 pub type Arguments<'a> = &'a [String];
 
-pub struct Runner {
+pub struct Runnable {
     name: String,
     func: Box<dyn Fn(Arguments) -> Pin<Box<dyn Future<Output = ExitCode>>>>,
 }
 
-impl Runner {
+impl Runnable {
     pub fn new<F, Fut>(name: String, async_func: F) -> Self
     where
         F: Fn(Arguments) -> Fut + 'static,
         Fut: Future<Output = ExitCode> + 'static,
     {
-        Runner {
+        Runnable {
             name,
             func: Box::new(move |args| Box::pin(async_func(args))),
         }

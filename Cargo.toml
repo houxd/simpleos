@@ -16,10 +16,10 @@ exclude = []
 crate-type = ["lib"]
 
 [features]
-default = ["util", "panic-handler", "allocator-cstdlib"]
+default = ["util"]
+util = []                                        # 启用实用工具功能, 例如时间处理等
 allocator-cstdlib = []                           # 启用基于C标准库的内存分配器
 panic-handler = []                               # 使用内置的panic处理器, 需要启用core库
-util = []                                        # 启用实用工具功能, 例如时间处理等
 
 [[example]]
 name = "emulate"
