@@ -1,4 +1,5 @@
 use crate::executor::Runnable;
+use crate::util::RingBuf;
 use crate::{println, singleton, sys};
 use alloc::boxed::Box;
 use alloc::collections::VecDeque;
@@ -30,6 +31,13 @@ pub enum Signal {
     SIGSTOP,    // 暂停信号(不可捕获)
     SIGCONT,    // 继续执行
     SIGUSR(u8), // 用户自定义信号
+    SIGNULL,    // 空信号, 用于占位
+}
+
+impl Default for Signal {
+    fn default() -> Self {
+        Signal::SIGNULL
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -47,7 +55,7 @@ pub struct Task {
     paused: bool,                                                // 任务是否被暂停
     exited: Option<ExitCode>,                                    // 任务结束状态
     waiters: TaskCountType,                                      // 等待该任务完成的任务数量
-    pending_signals: VecDeque<Signal>,                           // 待处理的信号队列
+    pending_signals: RingBuf<Signal, 4>,                         // 待处理的信号队列
     signal_handler: Option<Box<dyn Fn(Signal) -> SignalAction>>, // 信号处理器
 }
 
@@ -60,7 +68,7 @@ impl Task {
             paused: false,
             exited: None,
             waiters: 0,
-            pending_signals: VecDeque::new(),
+            pending_signals: RingBuf::new(),
             signal_handler: None,
         }
     }
@@ -150,12 +158,13 @@ impl Executor {
             executor.current_task_id = Some(task.id);
 
             // 处理待处理的信号
-            while let Some(signal) = task.pending_signals.pop_front() {
+            while let Some(signal) = task.pending_signals.pop() {
                 let action = if let Some(ref handler) = task.signal_handler {
                     match signal {
                         // SIGKILL 和 SIGSTOP 不能被捕获
                         Signal::SIGKILL => SignalAction::Terminate(-9),
                         Signal::SIGSTOP => SignalAction::Pause,
+                        Signal::SIGNULL => SignalAction::Ignore,
                         _ => handler(signal),
                     }
                 } else {
@@ -166,6 +175,7 @@ impl Executor {
                         Signal::SIGSTOP => SignalAction::Pause,
                         Signal::SIGCONT => SignalAction::Continue,
                         Signal::SIGUSR(_) => SignalAction::Ignore,
+                        Signal::SIGNULL => SignalAction::Ignore,
                     }
                 };
 
@@ -335,7 +345,7 @@ impl Executor {
     /// 向任务发送信号
     pub fn send_signal(target_id: TaskId, signal: Signal) -> bool {
         if let Some(task) = Self::get_mut().tasks.iter_mut().find(|t| t.id == target_id) {
-            task.pending_signals.push_back(signal);
+            task.pending_signals.push(signal);
             return true;
         }
 

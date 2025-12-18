@@ -28,6 +28,8 @@ pub struct Console {
     // ANSI转义序列状态
     escape_state: EscapeState,
     cmds_parser_list: VecDeque<Box<dyn CmdParser>>,
+    // 当前前台任务ID
+    pub fg_task_id: Option<u16>,
 }
 
 singleton!(Console {
@@ -38,6 +40,7 @@ singleton!(Console {
     cursor_pos: 0,
     escape_state: EscapeState::Normal,
     cmds_parser_list: VecDeque::new(),
+    fg_task_id: None,
 });
 
 #[allow(unused)]
@@ -214,12 +217,14 @@ impl Console {
                     127
                 }),
             );
+            self.fg_task_id = Some(pid);
             loop {
                 if !Executor::is_running(pid) {
                     break;
                 }
                 sys::yield_now().await;
             }
+            self.fg_task_id = None;
         }
     }
 

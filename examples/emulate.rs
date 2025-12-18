@@ -92,6 +92,12 @@ impl ConsoleIOEmulate {
             let mut buffer = [0u8; 1];
             loop {
                 if stdin.read_exact(&mut buffer).is_ok() {
+                    if buffer[0] == 3 {
+                        if let Some(pid) = Console::get_mut().fg_task_id {
+                            Executor::kill(pid);
+                        }
+                    }
+
                     if tx.send(buffer[0]).is_err() {
                         break;
                     }
