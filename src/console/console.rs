@@ -28,8 +28,10 @@ pub struct Console {
     // ANSI转义序列状态
     escape_state: EscapeState,
     cmds_parser_list: VecDeque<Box<dyn CmdParser>>,
-    // 当前前台任务ID
-    pub fg_task_id: Option<u16>,
+    // // 当前前台任务ID
+    // pub fg_task_id: Option<u16>,
+    // 是否阻塞后台读取
+    block_bg_read: bool,
 }
 
 singleton!(Console {
@@ -40,7 +42,8 @@ singleton!(Console {
     cursor_pos: 0,
     escape_state: EscapeState::Normal,
     cmds_parser_list: VecDeque::new(),
-    fg_task_id: None,
+    // fg_task_id: None,
+    block_bg_read: false,
 });
 
 #[allow(unused)]
@@ -217,14 +220,26 @@ impl Console {
                     127
                 }),
             );
-            self.fg_task_id = Some(pid);
+            // self.fg_task_id = Some(pid);
             loop {
+                sys::yield_now().await;
+
                 if !Executor::is_running(pid) {
                     break;
                 }
-                sys::yield_now().await;
+
+                if self.block_bg_read {
+                    continue;
+                }
+                
+                // 监听 Ctrl+C 以终止前台任务
+                if let Some(byte) = SimpleOs::console().console_getc() {
+                    if byte == 3 {
+                        Executor::kill(pid);
+                    }
+                }
             }
-            self.fg_task_id = None;
+            // self.fg_task_id = None;
         }
     }
 
@@ -366,6 +381,38 @@ impl Console {
             }
             sys::yield_now().await;
         }
+    }
+
+    pub async fn getc() -> u8 {
+        let console = Console::get_mut();
+        console.block_bg_read = true;
+        loop {
+            if let Some(b) = SimpleOs::console().console_getc() {
+                console.block_bg_read = false;
+                return b;
+            }
+            sys::yield_now().await;
+        }
+    }
+
+    pub async fn readline(buffer: &mut [u8]) -> usize {
+        let console = Console::get_mut();
+        console.block_bg_read = true;
+        let mut index = 0usize;
+        loop {
+            if let Some(b) = SimpleOs::console().console_getc() {
+                if b == b'\r' || b == b'\n' {
+                    console.block_bg_read = false;
+                    break;
+                }
+                if index < buffer.len() {
+                    buffer[index] = b;
+                    index += 1;
+                }
+            }
+            sys::yield_now().await;
+        }
+        index
     }
 
     // pub async fn join(id: u16) {

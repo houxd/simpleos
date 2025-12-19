@@ -11,14 +11,14 @@ use simpleos::executor::ExitCode;
 use simpleos::singleton;
 use simpleos::sys::Device;
 use simpleos::sys::SimpleOs;
+use simpleos::util::RingBuf;
 use simpleos::Result;
-use termion::raw::RawTerminal;
 use std::io::{stdin, Read, Write};
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::sync::mpsc::{channel, Receiver, TryRecvError};
 use std::thread;
 use termion::raw::IntoRawMode;
+use termion::raw::RawTerminal;
 
 struct CpuEmulate;
 
@@ -34,11 +34,19 @@ impl Driver for CpuEmulate {
 
 impl CpuDriver for CpuEmulate {
     fn cpu_reset(&mut self) -> ! {
-        BoardEmulate::get_mut().console0.get().unwrap().restore_terminal();
+        BoardEmulate::get_mut()
+            .console0
+            .get()
+            .unwrap()
+            .restore_terminal();
         panic!("System reset called in emulation.");
     }
     fn cpu_panic(&mut self, panic_info: String) -> ! {
-        BoardEmulate::get_mut().console0.get().unwrap().restore_terminal();
+        BoardEmulate::get_mut()
+            .console0
+            .get()
+            .unwrap()
+            .restore_terminal();
         panic!("Panic: {}", panic_info);
     }
 }
@@ -74,39 +82,16 @@ impl SysTickDriver for SysTickEmulate {
 }
 
 struct ConsoleIOEmulate {
-    rx: Receiver<u8>,
+    rx: Arc<Mutex<RingBuf<u8, 1024>>>,
     raw_term: Arc<Mutex<Option<RawTerminal<std::io::Stdout>>>>,
 }
 
 impl ConsoleIOEmulate {
     fn new() -> Self {
-        let (tx, rx) = channel();
-        let raw_term = Arc::new(Mutex::new(None));
-        let raw_term_clone = raw_term.clone();
-
-        thread::spawn(move || {
-            let mut stdin = stdin();
-            let raw = std::io::stdout().into_raw_mode().unwrap();
-            *raw_term_clone.lock().unwrap() = Some(raw);
-
-            let mut buffer = [0u8; 1];
-            loop {
-                if stdin.read_exact(&mut buffer).is_ok() {
-                    if buffer[0] == 3 {
-                        if let Some(pid) = Console::get_mut().fg_task_id {
-                            Executor::kill(pid);
-                        }
-                    }
-
-                    if tx.send(buffer[0]).is_err() {
-                        break;
-                    }
-                }
-            }
-            // 线程结束时自动 drop raw_term，恢复终端
-        });
-
-        ConsoleIOEmulate { rx, raw_term }
+        ConsoleIOEmulate {
+            rx: Arc::new(Mutex::new(RingBuf::new())),
+            raw_term: Arc::new(Mutex::new(None)),
+        }
     }
 
     fn restore_terminal(&mut self) {
@@ -117,6 +102,23 @@ impl ConsoleIOEmulate {
 
 impl Driver for ConsoleIOEmulate {
     fn driver_init(&mut self) -> Result<()> {
+        let raw_term_clone = self.raw_term.clone();
+        let rx_clone = self.rx.clone();
+        thread::spawn(move || {
+            let mut stdin = stdin();
+            let raw = std::io::stdout().into_raw_mode().unwrap();
+            *raw_term_clone.lock().unwrap() = Some(raw);
+
+            let mut buffer = [0u8; 1];
+            loop {
+                if stdin.read_exact(&mut buffer).is_ok() {
+                    let mut rx = rx_clone.lock().unwrap();
+                    rx.push(buffer[0]);
+                }
+            }
+            // 线程结束时自动 drop raw_term，恢复终端
+        });
+
         Ok(())
     }
     fn driver_deinit(&mut self) -> Result<()> {
@@ -126,12 +128,11 @@ impl Driver for ConsoleIOEmulate {
 
 impl ConsoleDriver for ConsoleIOEmulate {
     fn console_getc(&mut self) -> Option<u8> {
-        let c = match self.rx.try_recv() {
-            Ok(byte) => Some(byte),
-            Err(TryRecvError::Empty) => None,
-            Err(TryRecvError::Disconnected) => None,
-        };
-        c
+        let mut rx = self.rx.lock().unwrap();
+        match rx.pop() {
+            Some(byte) => Some(byte),
+            None => None,
+        }
     }
 
     fn console_putc(&mut self, byte: u8) -> bool {
