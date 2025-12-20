@@ -1,4 +1,4 @@
-use crate::{driver::Driver, print, println, singleton};
+use crate::{driver::Driver, println, singleton};
 use alloc::{boxed::Box, format, string::String, string::ToString, vec::Vec};
 use anyhow::{anyhow, Result};
 use core::any::Any;
@@ -64,7 +64,7 @@ pub struct File {
 }
 
 impl File {
-    fn open(path: &str, mode: &str) -> Result<File> {
+    pub fn open(path: &str, mode: &str) -> Result<File> {
         let (fs, fs_index, path) = Fs::path_to_fs_index(path)?;
         let node = fs.open(path, mode)?;
         Ok(File {
@@ -73,7 +73,7 @@ impl File {
             closed: false,
         })
     }
-    fn close(&mut self) -> Result<()> {
+    pub fn close(&mut self) -> Result<()> {
         if self.closed {
             return Ok(());
         }
@@ -82,21 +82,21 @@ impl File {
         self.closed = true;
         Ok(())
     }
-    fn flush(&mut self) -> Result<()> {
+    pub fn flush(&mut self) -> Result<()> {
         if self.closed {
             return Err(anyhow!("File is already closed"));
         }
         let fs = &mut Fs::get_mut().fstab[self.fs_index].fs;
         fs.flush(&mut self.node)
     }
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+    pub fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         if self.closed {
             return Err(anyhow!("File is already closed"));
         }
         let fs = &mut Fs::get_mut().fstab[self.fs_index].fs;
         fs.read(&mut self.node, buf)
     }
-    fn write(&mut self, buf: &[u8]) -> Result<usize> {
+    pub fn write(&mut self, buf: &[u8]) -> Result<usize> {
         if self.closed {
             return Err(anyhow!("File is already closed"));
         }
@@ -104,7 +104,7 @@ impl File {
         fs.write(&mut self.node, buf)
     }
     #[allow(unused)]
-    fn seek(&mut self, pos: isize, whence: Whence) -> Result<isize> {
+    pub fn seek(&mut self, pos: isize, whence: Whence) -> Result<isize> {
         if self.closed {
             return Err(anyhow!("File is already closed"));
         }
@@ -146,6 +146,12 @@ singleton!(Fs {
 });
 
 impl Fs {
+    pub fn fstab() -> &'static mut [FsEntry] {
+        Fs::get_mut().fstab
+    }
+    pub fn cwd() -> String {
+        Fs::get_mut().cwd.clone()
+    }
     pub fn init(fstab: &'static mut [FsEntry]) -> Result<()> {
         Fs::get_mut().fstab = fstab;
 
@@ -356,302 +362,5 @@ impl Fs {
         } else {
             path
         }
-    }
-    pub async fn on_cmd(args: Vec<String>) -> Option<Vec<String>> {
-        if let Some(cmd) = args.get(0) {
-            match cmd.as_str() {
-                "help" | "?" => {
-                    println!("Filesystem commands:");
-                    println!("  {:<40} {}", "df", "Show filesystem disk usage");
-                    println!(
-                        "  {:<40} {}",
-                        "mount <mount_point>", "Mount the filesystem at mount_point"
-                    );
-                    println!(
-                        "  {:<40} {}",
-                        "unmount <mount_point>", "Unmount the filesystem at mount_point"
-                    );
-                    println!(
-                        "  {:<40} {}",
-                        "format <mount_point>", "Format the filesystem at mount_point"
-                    );
-                    println!(
-                        "  {:<40} {}",
-                        "info <mount_point>",
-                        "Show information about the filesystem at mount_point"
-                    );
-                    println!("  {:<40} {}", "mkdir <path>", "Create a directory at path");
-                    println!(
-                        "  {:<40} {}",
-                        "rm <path>", "Delete the file or directory at path"
-                    );
-                    println!(
-                        "  {:<40} {}",
-                        "mv <old_path> <new_path>", "Rename a file or directory"
-                    );
-                    println!("  {:<40} {}", "sync", "Synchronize all filesystems");
-                    println!(
-                        "  {:<40} {}",
-                        "ls <path>", "List directory contents at path"
-                    );
-                    println!(
-                        "  {:<40} {}",
-                        "cd <path>", "Change current directory to path"
-                    );
-                    println!("  {:<40} {}", "pwd", "Print current working directory");
-                    println!(
-                        "  {:<40} {}",
-                        "touch <path>", "Create an empty file at path"
-                    );
-                    println!(
-                        "  {:<40} {}",
-                        "cat <path>", "Display the contents of the file at path"
-                    );
-                    println!(
-                        "  {:<40} {}",
-                        "write <path> <content>", "Write content to the file at path"
-                    );
-                    return Some(args);
-                }
-                "df" => {
-                    println!("Mount Point    Total       Used        Free");
-                    for entry in Fs::get_mut().fstab.iter_mut() {
-                        match entry.fs.info() {
-                            Ok(info) => {
-                                println!(
-                                    "{:<14} {:<10} {:<10} {:<10}",
-                                    entry.mount_point,
-                                    info.total(),
-                                    info.used(),
-                                    info.free()
-                                );
-                            }
-                            Err(e) => {
-                                println!("Error getting info for {}: {}", entry.mount_point, e)
-                            }
-                        }
-                    }
-                    return None;
-                }
-                "mount" => {
-                    if let Some(mount_point) = args.get(1) {
-                        match Fs::mount(mount_point) {
-                            Ok(_) => println!("Mounted {}", mount_point),
-                            Err(e) => println!("Error mounting {}: {}", mount_point, e),
-                        }
-                    } else {
-                        println!("Usage: mount <mount_point>");
-                    }
-                    return None;
-                }
-                "unmount" => {
-                    if let Some(mount_point) = args.get(1) {
-                        match Fs::unmount(mount_point) {
-                            Ok(_) => println!("Unmounted {}", mount_point),
-                            Err(e) => println!("Error unmounting {}: {}", mount_point, e),
-                        }
-                    } else {
-                        println!("Usage: unmount <mount_point>");
-                    }
-                    return None;
-                }
-                "format" => {
-                    if let Some(mount_point) = args.get(1) {
-                        match Fs::format(mount_point) {
-                            Ok(_) => println!("Formatted {}", mount_point),
-                            Err(e) => println!("Error formatting {}: {}", mount_point, e),
-                        }
-                    } else {
-                        println!("Usage: format <mount_point>");
-                    }
-                    return None;
-                }
-                "info" => {
-                    if let Some(mount_point) = args.get(1) {
-                        match Fs::info(mount_point) {
-                            Ok(info) => {
-                                println!(
-                                    "FS Info for {}: Total: {}, Used: {}, Free: {}",
-                                    mount_point,
-                                    info.total(),
-                                    info.used(),
-                                    info.free()
-                                );
-                            }
-                            Err(e) => println!("Error getting info for {}: {}", mount_point, e),
-                        }
-                    } else {
-                        println!("Usage: info <mount_point>");
-                    }
-                    return None;
-                }
-                "mkdir" => {
-                    if let Some(path) = args.get(1) {
-                        let path = Fs::to_absolute_path(path);
-                        match Fs::mkdir(&path) {
-                            Ok(_) => {}
-                            Err(e) => println!("Error creating directory {}: {}", path, e),
-                        }
-                    } else {
-                        println!("Usage: mkdir <path>");
-                    }
-                    return None;
-                }
-                "rm" => {
-                    if let Some(path) = args.get(1) {
-                        let path = Fs::to_absolute_path(path);
-                        match Fs::unlink(&path) {
-                            Ok(_) => {}
-                            Err(e) => println!("Error deleting {}: {}", path, e),
-                        }
-                    } else {
-                        println!("Usage: rm <path>");
-                    }
-                    return None;
-                }
-                "mv" => {
-                    if let (Some(old_path), Some(new_path)) = (args.get(1), args.get(2)) {
-                        let old_path = Fs::to_absolute_path(old_path);
-                        let new_path = Fs::to_absolute_path(new_path);
-                        match Fs::rename(&old_path, &new_path) {
-                            Ok(_) => {}
-                            Err(e) => {
-                                println!("Error renaming {} to {}: {}", old_path, new_path, e)
-                            }
-                        }
-                    } else {
-                        println!("Usage: mv <old_path> <new_path>");
-                    }
-                    return None;
-                }
-                "sync" => {
-                    match Fs::sync() {
-                        Ok(_) => println!("Filesystem synchronized"),
-                        Err(e) => println!("Error synchronizing filesystem: {}", e),
-                    }
-                    return None;
-                }
-                "ls" => {
-                    let path = if let Some(p) = args.get(1) {
-                        p.as_str()
-                    } else {
-                        Fs::get_mut().cwd.as_str()
-                    };
-                    match Fs::readdir(path) {
-                        Ok(entries) => {
-                            for entry in &entries {
-                                if entry.is_dir() {
-                                    println!("DIR\t-\t{}", entry.name());
-                                }
-                            }
-                            for entry in &entries {
-                                if entry.is_file() {
-                                    println!("FILE\t{}\t{}", entry.size(), entry.name());
-                                }
-                            }
-                        }
-                        Err(e) => println!("Error reading directory {}: {}", path, e),
-                    }
-                    return None;
-                }
-                "cd" => {
-                    if let Some(path) = args.get(1) {
-                        let path = Fs::to_absolute_path(path);
-                        match Fs::change_dir(&path) {
-                            Ok(_) => {}
-                            Err(e) => println!("Error changing directory to {}: {}", path, e),
-                        }
-                    } else {
-                        println!("Usage: cd <path>");
-                    }
-                    return None;
-                }
-                "pwd" => {
-                    let cwd = Fs::get_cwd();
-                    println!("{}", cwd);
-                    return None;
-                }
-                "touch" => {
-                    if let Some(path) = args.get(1) {
-                        let path = Fs::to_absolute_path(path);
-                        match File::open(&path, "w") {
-                            Ok(mut file) => match file.close() {
-                                Ok(_) => {}
-                                Err(e) => println!("Error closing file {}: {}", path, e),
-                            },
-                            Err(e) => println!("Error creating file {}: {}", path, e),
-                        }
-                    } else {
-                        println!("Usage: touch <path>");
-                    }
-                    return None;
-                }
-                "cat" => {
-                    if let Some(path) = args.get(1) {
-                        let path = Fs::to_absolute_path(path);
-                        match File::open(&path, "r") {
-                            Ok(mut file) => {
-                                let mut buffer = [0u8; 256];
-                                loop {
-                                    match file.read(&mut buffer) {
-                                        Ok(0) => break,
-                                        Ok(n) => {
-                                            let content = core::str::from_utf8(&buffer[..n])
-                                                .unwrap_or("[Invalid UTF-8]");
-                                            print!("{}", content);
-                                        }
-                                        Err(e) => {
-                                            println!("Error reading file {}: {}", path, e);
-                                            break;
-                                        }
-                                    }
-                                }
-                                match file.close() {
-                                    Ok(_) => {}
-                                    Err(e) => println!("Error closing file {}: {}", path, e),
-                                }
-                            }
-                            Err(e) => println!("Error opening file {}: {}", path, e),
-                        }
-                    } else {
-                        println!("Usage: cat <path>");
-                    }
-                    return None;
-                }
-                "write" => {
-                    if let Some(path) = args.get(1) {
-                        let path = Fs::to_absolute_path(path);
-                        match File::open(&path, "w") {
-                            Ok(mut file) => {
-                                if let Some(content) = args.get(2) {
-                                    let content = content.as_bytes();
-                                    match file.write(content) {
-                                        Ok(_) => match file.flush() {
-                                            Ok(_) => {}
-                                            Err(e) => {
-                                                println!("Error flushing file {}: {}", path, e)
-                                            }
-                                        },
-                                        Err(e) => println!("Error writing to file {}: {}", path, e),
-                                    }
-                                } else {
-                                    println!("Usage: write <path> <content>");
-                                }
-                                match file.close() {
-                                    Ok(_) => {}
-                                    Err(e) => println!("Error closing file {}: {}", path, e),
-                                }
-                            }
-                            Err(e) => println!("Error opening file {}: {}", path, e),
-                        }
-                    } else {
-                        println!("Usage: write <path> <content>");
-                    }
-                    return None;
-                }
-                _ => {}
-            }
-        }
-        Some(args)
     }
 }

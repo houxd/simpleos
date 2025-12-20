@@ -7,7 +7,7 @@ pub use anyhow::Result;
 pub use core;
 pub use async_trait::async_trait;
 
-pub mod bindings;
+mod bindings;
 pub mod console;
 pub mod driver;
 pub mod executor;
