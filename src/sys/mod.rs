@@ -1,10 +1,10 @@
 use crate::{
-    console::ConsoleDriver, driver::cpu::CpuDriver, driver::systick::SysTickDriver, singleton,
+    driver::cpu::CpuDriver, driver::systick::SysTickDriver, driver::tty::TtyDriver, singleton,
 };
 
 pub trait Device {
     fn get_cpu(&self) -> &'static mut dyn CpuDriver;
-    fn get_console(&self) -> &'static mut dyn ConsoleDriver;
+    fn get_tty(&self) -> &'static mut dyn TtyDriver;
     fn get_systick(&self) -> &'static mut dyn SysTickDriver;
 }
 
@@ -30,8 +30,8 @@ impl SimpleOs {
     pub fn cpu() -> &'static mut dyn CpuDriver {
         SimpleOs::device().get_cpu()
     }
-    pub fn console() -> &'static mut dyn ConsoleDriver {
-        SimpleOs::device().get_console()
+    pub fn tty() -> &'static mut dyn TtyDriver {
+        SimpleOs::device().get_tty()
     }
     pub fn systick() -> &'static mut dyn SysTickDriver {
         SimpleOs::device().get_systick()

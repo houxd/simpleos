@@ -249,10 +249,6 @@ impl Executor {
 
     /// 杀死任务
     pub fn kill(id: TaskId) -> bool {
-        if Self::current_task_id() == Some(id) {
-            return false; // 不能杀死自己
-        }
-
         Self::send_signal(id, Signal::SIGKILL)
     }
 
@@ -265,16 +261,13 @@ impl Executor {
             }
         };
 
-        // 在任务队列中找到当前任务，设置其 exit_request
+        // 在任务队列中找到当前任务，设置其 exited 标志
+        if let Some(task) = Self::get_mut()
+            .tasks
+            .iter_mut()
+            .find(|t| t.id == current_id)
         {
-            // let mut tasks = Self::get_mut().tasks.borrow_mut();
-            if let Some(task) = Self::get_mut()
-                .tasks
-                .iter_mut()
-                .find(|t| t.id == current_id)
-            {
-                task.exited = Some(exit_code);
-            }
+            task.exited = Some(exit_code);
         }
 
         // 进入循环后, yield会回到poll, 这个任务也就终止了
@@ -348,7 +341,6 @@ impl Executor {
             task.pending_signals.push(signal);
             return true;
         }
-
         false
     }
 

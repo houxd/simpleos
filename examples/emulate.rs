@@ -1,7 +1,7 @@
 use simpleos::alloc::boxed::Box;
 use simpleos::console::BuiltinCmds;
 use simpleos::console::Console;
-use simpleos::console::ConsoleDriver;
+use simpleos::driver::tty::TtyDriver;
 use simpleos::driver::cpu::CpuDriver;
 use simpleos::driver::lazy_init::LazyInit;
 use simpleos::driver::systick::SysTickDriver;
@@ -81,15 +81,17 @@ impl SysTickDriver for SysTickEmulate {
     }
 }
 
-struct ConsoleIOEmulate {
+struct TtyEmulate {
     rx: Arc<Mutex<RingBuf<u8, 1024>>>,
+    rx_break: Arc<Mutex<bool>>,
     raw_term: Arc<Mutex<Option<RawTerminal<std::io::Stdout>>>>,
 }
 
-impl ConsoleIOEmulate {
+impl TtyEmulate {
     fn new() -> Self {
-        ConsoleIOEmulate {
+        TtyEmulate {
             rx: Arc::new(Mutex::new(RingBuf::new())),
+            rx_break: Arc::new(Mutex::new(false)),
             raw_term: Arc::new(Mutex::new(None)),
         }
     }
@@ -100,10 +102,11 @@ impl ConsoleIOEmulate {
     }
 }
 
-impl Driver for ConsoleIOEmulate {
+impl Driver for TtyEmulate {
     fn driver_init(&mut self) -> Result<()> {
         let raw_term_clone = self.raw_term.clone();
         let rx_clone = self.rx.clone();
+        let rx_break_clone = self.rx_break.clone();
         thread::spawn(move || {
             let mut stdin = stdin();
             let raw = std::io::stdout().into_raw_mode().unwrap();
@@ -112,6 +115,11 @@ impl Driver for ConsoleIOEmulate {
             let mut buffer = [0u8; 1];
             loop {
                 if stdin.read_exact(&mut buffer).is_ok() {
+                    if buffer[0] == 3 {
+                        let mut rx_break = rx_break_clone.lock().unwrap();
+                        *rx_break = true;
+                        continue;
+                    }
                     let mut rx = rx_clone.lock().unwrap();
                     rx.push(buffer[0]);
                 }
@@ -126,8 +134,8 @@ impl Driver for ConsoleIOEmulate {
     }
 }
 
-impl ConsoleDriver for ConsoleIOEmulate {
-    fn console_getc(&mut self) -> Option<u8> {
+impl TtyDriver for TtyEmulate {
+    fn tty_getc(&mut self) -> Option<u8> {
         let mut rx = self.rx.lock().unwrap();
         match rx.pop() {
             Some(byte) => Some(byte),
@@ -135,26 +143,35 @@ impl ConsoleDriver for ConsoleIOEmulate {
         }
     }
 
-    fn console_putc(&mut self, byte: u8) -> bool {
+    fn tty_putc(&mut self, byte: u8) {
         print!("{}", byte as char);
-        true
     }
 
-    fn console_flush(&mut self) {
+    fn tty_flush(&mut self) {
         std::io::stdout().flush().unwrap();
+    }
+
+    fn tty_get_break(&mut self) -> bool {
+        let mut rx_break = self.rx_break.lock().unwrap();
+        if *rx_break {
+            *rx_break = false;
+            true
+        } else {
+            false
+        }
     }
 }
 
 struct BoardEmulate {
     cpu0: LazyInit<CpuEmulate>,
     systick0: LazyInit<SysTickEmulate>,
-    console0: LazyInit<ConsoleIOEmulate>,
+    console0: LazyInit<TtyEmulate>,
 }
 
 singleton!(BoardEmulate {
     cpu0: LazyInit::new(|| CpuEmulate {}),
     systick0: LazyInit::new(|| SysTickEmulate {}),
-    console0: LazyInit::new(|| ConsoleIOEmulate::new()),
+    console0: LazyInit::new(|| TtyEmulate::new()),
 });
 
 impl Device for BoardEmulate {
@@ -162,7 +179,7 @@ impl Device for BoardEmulate {
         BoardEmulate::get_mut().cpu0.get_or_init()
     }
 
-    fn get_console(&self) -> &'static mut dyn ConsoleDriver {
+    fn get_tty(&self) -> &'static mut dyn TtyDriver {
         BoardEmulate::get_mut().console0.get_or_init()
     }
 

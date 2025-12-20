@@ -28,10 +28,6 @@ pub struct Console {
     // ANSI转义序列状态
     escape_state: EscapeState,
     cmds_parser_list: VecDeque<Box<dyn CmdParser>>,
-    // // 当前前台任务ID
-    // pub fg_task_id: Option<u16>,
-    // 是否阻塞后台读取
-    block_bg_read: bool,
 }
 
 singleton!(Console {
@@ -42,8 +38,6 @@ singleton!(Console {
     cursor_pos: 0,
     escape_state: EscapeState::Normal,
     cmds_parser_list: VecDeque::new(),
-    // fg_task_id: None,
-    block_bg_read: false,
 });
 
 #[allow(unused)]
@@ -59,8 +53,8 @@ impl Console {
     }
 
     fn show_prompt(&mut self) {
-        SimpleOs::console().console_write(self.prompt.as_bytes());
-        SimpleOs::console().console_flush();
+        SimpleOs::tty().tty_write(self.prompt.as_bytes());
+        SimpleOs::tty().tty_flush();
     }
 
     // 添加命令到历史记录
@@ -106,40 +100,40 @@ impl Console {
     // 清除当前行显示
     fn clear_current_line(&mut self) {
         // 移动到行首
-        SimpleOs::console().console_putc(b'\r');
+        SimpleOs::tty().tty_putc(b'\r');
         // 清除整行
-        SimpleOs::console().console_write(b"\x1b[K");
+        SimpleOs::tty().tty_write(b"\x1b[K");
         self.show_prompt();
     }
 
     // 重绘当前行
     fn redraw_line(&mut self) {
-        SimpleOs::console().console_write(self.current_line.as_slice());
+        SimpleOs::tty().tty_write(self.current_line.as_slice());
         // 移动光标到正确位置
         if self.cursor_pos < self.current_line.len() {
             let moves_back = self.current_line.len() - self.cursor_pos;
             for _ in 0..moves_back {
-                SimpleOs::console().console_putc(b'\x08'); // 退格
+                SimpleOs::tty().tty_putc(b'\x08'); // 退格
             }
         }
-        SimpleOs::console().console_flush();
+        SimpleOs::tty().tty_flush();
     }
 
     // 向左移动光标
     fn move_cursor_left(&mut self) {
         if self.cursor_pos > 0 {
             self.cursor_pos -= 1;
-            SimpleOs::console().console_putc(b'\x08'); // 退格
-            SimpleOs::console().console_flush();
+            SimpleOs::tty().tty_putc(b'\x08'); // 退格
+            SimpleOs::tty().tty_flush();
         }
     }
 
     // 向右移动光标
     fn move_cursor_right(&mut self) {
         if self.cursor_pos < self.current_line.len() {
-            SimpleOs::console().console_putc(self.current_line[self.cursor_pos]);
+            SimpleOs::tty().tty_putc(self.current_line[self.cursor_pos]);
             self.cursor_pos += 1;
-            SimpleOs::console().console_flush();
+            SimpleOs::tty().tty_flush();
         }
     }
 
@@ -152,9 +146,9 @@ impl Console {
         // 如果光标在末尾，直接添加
         if self.cursor_pos == self.current_line.len() {
             self.current_line.push(c); // Vec::push 不会失败（除非内存不足）
-            SimpleOs::console().console_putc(c);
+            SimpleOs::tty().tty_putc(c);
             self.cursor_pos += 1;
-            SimpleOs::console().console_flush();
+            SimpleOs::tty().tty_flush();
         } else {
             // 使用 Vec 的 insert 方法
             self.current_line.insert(self.cursor_pos, c); // 直接使用 insert
@@ -189,8 +183,8 @@ impl Console {
     }
 
     async fn exec_cmd(&mut self, args: Vec<String>) {
-        SimpleOs::console().console_flush();
-        SimpleOs::console().console_flush_rx();
+        SimpleOs::tty().tty_flush();
+        SimpleOs::tty().tty_clear_rx();
         if let Some(cmd) = args.get(0) {
             // 显示帮助
             if cmd == "help" || cmd == "?" {
@@ -220,26 +214,20 @@ impl Console {
                     127
                 }),
             );
-            // self.fg_task_id = Some(pid);
+
+            // 等待前台任务结束, 监听 Ctrl+C 终止 
             loop {
                 sys::yield_now().await;
 
                 if !Executor::is_running(pid) {
                     break;
                 }
-
-                if self.block_bg_read {
-                    continue;
-                }
                 
                 // 监听 Ctrl+C 以终止前台任务
-                if let Some(byte) = SimpleOs::console().console_getc() {
-                    if byte == 3 {
-                        Executor::kill(pid);
-                    }
+                if  SimpleOs::tty().tty_get_break() {
+                    Executor::kill(pid);
                 }
             }
-            // self.fg_task_id = None;
         }
     }
 
@@ -275,21 +263,22 @@ impl Console {
     }
 
     async fn _start(&mut self) {
-        SimpleOs::console().console_flush_rx();
+        SimpleOs::tty().tty_flush();
+        SimpleOs::tty().tty_clear_rx();
         crate::println!("Console started. Type 'help' for commands.");
         self.show_prompt();
 
         loop {
-            let c = SimpleOs::console().console_getc();
+            let c = SimpleOs::tty().tty_getc();
             if let Some(b) = c {
                 match self.escape_state {
                     EscapeState::Normal => {
                         match b {
                             // 回车或换行，处理命令
                             b'\r' | b'\n' => {
-                                SimpleOs::console().console_putc(b'\r');
-                                SimpleOs::console().console_putc(b'\n');
-                                SimpleOs::console().console_flush();
+                                SimpleOs::tty().tty_putc(b'\r');
+                                SimpleOs::tty().tty_putc(b'\n');
+                                SimpleOs::tty().tty_flush();
 
                                 self.try_parse_cmdline().await;
 
@@ -300,11 +289,11 @@ impl Console {
                             }
                             // Ctrl+C (ASCII 3) - 终止当前输入
                             3 => {
-                                SimpleOs::console().console_putc(b'^');
-                                SimpleOs::console().console_putc(b'C');
-                                SimpleOs::console().console_putc(b'\r');
-                                SimpleOs::console().console_putc(b'\n');
-                                SimpleOs::console().console_flush();
+                                SimpleOs::tty().tty_putc(b'^');
+                                SimpleOs::tty().tty_putc(b'C');
+                                SimpleOs::tty().tty_putc(b'\r');
+                                SimpleOs::tty().tty_putc(b'\n');
+                                SimpleOs::tty().tty_flush();
                                 self.current_line.clear();
                                 self.cursor_pos = 0;
                                 self.history_index = None;
@@ -385,10 +374,8 @@ impl Console {
 
     pub async fn getc() -> u8 {
         let console = Console::get_mut();
-        console.block_bg_read = true;
         loop {
-            if let Some(b) = SimpleOs::console().console_getc() {
-                console.block_bg_read = false;
+            if let Some(b) = SimpleOs::tty().tty_getc() {
                 return b;
             }
             sys::yield_now().await;
@@ -397,12 +384,10 @@ impl Console {
 
     pub async fn readline(buffer: &mut [u8]) -> usize {
         let console = Console::get_mut();
-        console.block_bg_read = true;
         let mut index = 0usize;
         loop {
-            if let Some(b) = SimpleOs::console().console_getc() {
+            if let Some(b) = SimpleOs::tty().tty_getc() {
                 if b == b'\r' || b == b'\n' {
-                    console.block_bg_read = false;
                     break;
                 }
                 if index < buffer.len() {

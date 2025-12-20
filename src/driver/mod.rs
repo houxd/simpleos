@@ -18,5 +18,6 @@ pub mod spi;
 pub mod systick;
 pub mod uart;
 pub mod cpu;
+pub mod tty;
 
 pub use crate::lazy_init;

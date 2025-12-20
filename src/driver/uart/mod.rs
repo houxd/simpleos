@@ -1,8 +1,8 @@
-use crate::{console::ConsoleDriver, driver::Driver, sys, util::RingBuf};
+use crate::{driver::tty::TtyDriver, driver::Driver, sys, util::RingBuf};
 use anyhow::Result;
 
 pub trait UartDriver<const RX_SIZE: usize = 128, const TX_SIZE: usize = RX_SIZE>:
-    Driver + ConsoleDriver
+    Driver + TtyDriver
 {
     fn rx(&mut self) -> &mut RingBuf<u8, RX_SIZE>;
     fn tx(&mut self) -> &mut RingBuf<u8, TX_SIZE>;
