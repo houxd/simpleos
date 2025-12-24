@@ -5,6 +5,7 @@ macro_rules! singleton {
             fn instance() -> &'static mut Option<$type> {
                 static mut INSTANCE: Option<$type> = None;
                 unsafe {
+                    // if let None = INSTANCE {
                     if core::ptr::addr_of_mut!(INSTANCE).as_mut().unwrap_unchecked().as_mut().is_none() {
                         INSTANCE = Some($type {
                             $($field: $value,)*
@@ -33,6 +34,7 @@ macro_rules! singleton {
             fn instance() -> &'static mut Option<$type> {
                 static mut INSTANCE: Option<$type> = None;
                 unsafe {
+                    // if let None = INSTANCE {
                     if core::ptr::addr_of_mut!(INSTANCE).as_mut().unwrap_unchecked().as_mut().is_none() {
                         INSTANCE = Some($type::$new_fn());
                     }

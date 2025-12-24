@@ -22,6 +22,21 @@ impl BuiltinCmds {
         0
     }
 
+    pub async fn cmd_sleep(&self, args: &Vec<String>) -> ExitCode {
+        if let Some(sec_str) = args.get(1) {
+            if let Ok(sec) = sec_str.parse::<f32>() {
+                sys::sleep_ms((sec * 1000.0) as u32).await;
+                0
+            } else {
+                println!("Invalid sleep duration: {}", sec_str);
+                1
+            }
+        } else {
+            println!("Usage: sleep <seconds>");
+            2
+        }
+    }
+
     pub fn cmd_ps(&self, _args: &Vec<String>) -> ExitCode {
         let task_list = Executor::task_list();
         println!("id\ttask");
@@ -115,8 +130,9 @@ impl CmdParser for BuiltinCmds {
         &[
             ("help|?", "Show this help message"),
             ("reset", "Perform a system reset"),
+            ("sleep <seconds>", "Sleep for a specified number of seconds"),
             ("ps", "Show running tasks"),
-            ("kill", "Terminate a task"),
+            ("kill <task_id>", "Terminate a task"),
             ("free", "Show free memory"),
             ("pref", "Show task polling frequency"),
             ("panic", "Trigger a panic"),
@@ -127,6 +143,7 @@ impl CmdParser for BuiltinCmds {
         if let Some(cmd) = args.get(0) {
             match cmd.as_str() {
                 "reset" => self.cmd_reset(&args),
+                "sleep" => self.cmd_sleep(&args).await,
                 "ps" => self.cmd_ps(&args),
                 "kill" => self.cmd_kill(&args),
                 "free" => self.cmd_free(&args),

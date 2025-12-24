@@ -128,6 +128,17 @@ impl Executor {
         id
     }
 
+    pub fn default_signal_handler(signal: Signal) -> SignalAction {
+        match signal {
+            Signal::SIGINT | Signal::SIGTERM => SignalAction::Terminate(-1),
+            Signal::SIGKILL => SignalAction::Terminate(-9),
+            Signal::SIGSTOP => SignalAction::Pause,
+            Signal::SIGCONT => SignalAction::Continue,
+            Signal::SIGUSR(_) => SignalAction::Ignore,
+            Signal::SIGNULL => SignalAction::Ignore,
+        }
+    }
+
     pub fn run() {
         let executor = Executor::get_mut();
 
@@ -168,15 +179,7 @@ impl Executor {
                         _ => handler(signal),
                     }
                 } else {
-                    // 默认行为
-                    match signal {
-                        Signal::SIGINT | Signal::SIGTERM => SignalAction::Terminate(-1),
-                        Signal::SIGKILL => SignalAction::Terminate(-9),
-                        Signal::SIGSTOP => SignalAction::Pause,
-                        Signal::SIGCONT => SignalAction::Continue,
-                        Signal::SIGUSR(_) => SignalAction::Ignore,
-                        Signal::SIGNULL => SignalAction::Ignore,
-                    }
+                    Self::default_signal_handler(signal)
                 };
 
                 match action {
@@ -247,9 +250,9 @@ impl Executor {
         Self::get_mut().current_task_id
     }
 
-    /// 杀死任务
+    /// 杀死任务, 如果需要SIGKILL请使用 send_signal
     pub fn kill(id: TaskId) -> bool {
-        Self::send_signal(id, Signal::SIGKILL)
+        Self::send_signal(id, Signal::SIGTERM)
     }
 
     /// 结束当前任务, 设置 exit 标志
