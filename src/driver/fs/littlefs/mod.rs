@@ -125,9 +125,12 @@ impl FsHandle for LittleFs {
 
     fn info(&mut self) -> Result<Box<dyn FsInfo>> {
         unsafe {
-            let total = (self.lfs_cfg.block_count * self.lfs_cfg.block_size) as isize;
-            let free = lfs_fs_size(&mut self.lfs) as isize;
-            let used = total - free;
+            let total_blocks = self.lfs_cfg.block_count;
+            let used_blocks = lfs_fs_size(&mut self.lfs) as u32;
+            let free_blocks = total_blocks - used_blocks;
+            let total = (total_blocks * self.lfs_cfg.block_size) as isize;
+            let used = (used_blocks * self.lfs_cfg.block_size) as isize;
+            let free = (free_blocks * self.lfs_cfg.block_size) as isize;
             Ok(alloc::boxed::Box::new(LittleFsInfo { total, used, free }))
         }
     }
