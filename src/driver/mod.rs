@@ -3,7 +3,7 @@ use crate::Result;
 pub trait Driver {
     fn driver_init(&mut self) -> Result<()>;
     fn driver_deinit(&mut self) -> Result<()>;
-    fn driver_name(&self) -> &'static str {
+    fn driver_dev_name(&self) -> &'static str {
         core::any::type_name::<Self>()
     }
 }

@@ -1,7 +1,7 @@
 use crate::{driver::tty::TtyDriver, driver::Driver, sys, util::RingBuf};
 use anyhow::Result;
 
-pub trait UartDriver<const RX_SIZE: usize = 128, const TX_SIZE: usize = RX_SIZE>:
+pub trait UartDriver<const RX_SIZE: usize = 512, const TX_SIZE: usize = RX_SIZE>:
     Driver + TtyDriver
 {
     fn rx(&mut self) -> &mut RingBuf<u8, RX_SIZE>;

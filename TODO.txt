@@ -1,0 +1,2 @@
+uartdriver 不用泛型
+ringbuf 容量不要泛型

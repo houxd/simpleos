@@ -226,6 +226,9 @@ impl Fs {
         if path == "/" {
             return Err(anyhow!("Cannot delete root directory"));
         }
+        if path == ".." {
+            return Err(anyhow!("Cannot delete parent directory(..)"));
+        }
         let (fs, path) = Fs::path_to_fs(path)?;
         fs.unlink(path)
     }

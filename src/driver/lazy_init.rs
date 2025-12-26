@@ -26,18 +26,14 @@ where
             if let Some(init_func) = self.init_func.take() {
                 self.value = Some(init_func());
                 if let Err(e) = self.value.as_mut().unwrap().driver_init() {
-                    println!("{} INIT ERROR: {:?}", self.value.as_ref().unwrap().driver_name(), e);
+                    println!("{} INIT ERROR: {:?}", self.value.as_ref().unwrap().driver_dev_name(), e);
                 }else {
-                    println!("{} INIT OK.", self.value.as_ref().unwrap().driver_name());
+                    println!("{} INIT OK.", self.value.as_ref().unwrap().driver_dev_name());
                 }
             }
         }
         self.value.as_mut().unwrap()
     }
-
-    // pub fn init(&mut self) {
-    //     let _ = self.get_or_init();
-    // }
 
     pub fn get(&mut self) -> Option<&mut T> {
         self.value.as_mut()
